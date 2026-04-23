@@ -22,7 +22,10 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY') or 'carefor_now_fallback_key_change_in_production'
 if not os.environ.get('SECRET_KEY'):
     print("WARNING: SECRET_KEY not set in .env — using fallback key.")
-app.config['SQLALCHEMY_DATABASE_URI']        = os.environ['DATABASE_URL']
+
+db_url = os.environ['DATABASE_URL'].replace('postgresql://', 'postgresql+psycopg://')
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
