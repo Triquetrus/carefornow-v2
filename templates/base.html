@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CareForNow{% endblock %} — Emergency Medical Funding</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏥</text></svg>">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="{{ url_for('index') }}" class="navbar-brand">
+      <div class="logo-icon">❤️</div>
+      <span class="brand-text">Care<span>For</span>Now</span>
+    </a>
+
+    <ul class="nav-links">
+      {% if session.get('user_id') %}
+
+        {% if session.get('user_type') == 'family' %}
+          <li><a href="{{ url_for('dashboard') }}"      {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+          <li><a href="{{ url_for('emergency_case') }}" {% if request.endpoint == 'emergency_case' %}class="active"{% endif %}>New Case</a></li>
+          <li><a href="{{ url_for('nearby_support') }}" {% if request.endpoint == 'nearby_support' %}class="active"{% endif %}>Find Support</a></li>
+
+        {% elif session.get('user_type') == 'hospital' %}
+          <li><a href="{{ url_for('hospital_dashboard') }}" {% if request.endpoint == 'hospital_dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+
+        {% elif session.get('user_type') == 'funder' %}
+          <li><a href="{{ url_for('funder_dashboard') }}"   {% if request.endpoint == 'funder_dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+          <li><a href="{{ url_for('funder_setup_profile') }}" {% if request.endpoint == 'funder_setup_profile' %}class="active"{% endif %}>Profile</a></li>
+
+        {% elif session.get('user_type') == 'admin' %}
+          <li><a href="{{ url_for('admin_dashboard') }}" {% if request.endpoint == 'admin_dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+        {% endif %}
+
+        <li><a href="{{ url_for('logout') }}" class="btn-accent">Logout</a></li>
+
+      {% else %}
+        <li><a href="{{ url_for('login') }}"    {% if request.endpoint == 'login' %}class="active"{% endif %}>Login</a></li>
+        <li><a href="{{ url_for('register') }}" class="btn-accent">Get Help Now</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  {% block content %}{% endblock %}
+
+  <footer style="background:#fff;border-top:2px solid var(--border);padding:28px 0;margin-top:60px;text-align:center;color:var(--text-muted);font-size:0.88rem;">
+    <div class="container">
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:18px;">❤️</span>
+        <strong style="color:var(--primary-dark);font-family:'Playfair Display',serif;">CareForNow</strong>
+      </div>
+      <p>A mini project by Ankita Jethani, Sayali Pawar &amp; Salman Bagwan — Rajarambapu Institute of Technology, Sangli</p>
+      <p class="mt-1" style="font-size:0.8rem;">Emergency Medical Financial Assistance Platform · Free for patients &amp; families</p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

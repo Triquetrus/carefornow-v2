@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}Organization Profile{% endblock %}
+
+{% block head %}
+<!-- Google Maps JS API — replace YOUR_API_KEY with your actual key -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDijg-GJboVVevybvy_6-ENteRmTPXZ3Lg&libraries=places&callback=initMap" async defer></script>
+<style>
+  #map { width:100%; height:280px; border-radius:var(--radius-sm); border:1px solid var(--border); margin-top:8px; }
+  #map-placeholder { width:100%; height:280px; border-radius:var(--radius-sm); border:2px dashed var(--border);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:var(--bg);color:var(--text-muted);font-size:0.88rem;gap:8px;margin-top:8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#134f42,#1a6b5a);padding:36px 0 60px;color:#fff;margin-bottom:-32px;">
+  <div class="container">
+    <div class="d-flex align-center justify-between flex-wrap gap-2">
+      <div>
+        <div style="background:rgba(255,255,255,0.15);padding:4px 12px;border-radius:99px;font-size:0.78rem;font-weight:700;text-transform:uppercase;display:inline-block;margin-bottom:10px;">🏢 Organization Profile</div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;">
+          {% if profile %}Update Profile{% else %}Set Up Your Organization{% endif %}
+        </h1>
+        <p style="opacity:0.85;margin-top:6px;">Complete your profile — admin approval unlocks fund allocation</p>
+      </div>
+      <a href="{{ url_for('funder_dashboard') }}" class="btn" style="background:rgba(255,255,255,0.15);color:#fff;border:2px solid rgba(255,255,255,0.3);">← Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<div class="container" style="padding-top:0;padding-bottom:48px;max-width:680px;">
+
+  {% if profile and not profile.is_verified %}
+  <div class="alert alert-warning" style="margin-top:40px;margin-bottom:0;">
+    ⏳ <strong>Pending Admin Approval</strong> — Your organization profile has been submitted and is awaiting review. You'll be able to add funds and allocate to cases once approved.
+  </div>
+  {% elif profile and profile.is_verified %}
+  <div class="alert alert-success" style="margin-top:40px;margin-bottom:0;">
+    ✅ <strong>Approved Organization</strong> — You can add funds and allocate to patient cases.
+  </div>
+  {% endif %}
+
+  <div class="card" style="margin-top:24px;">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">Organization Details</h3>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-top:4px;">
+        {% if not profile %}Upload your registration/trust certificate to complete registration.{% else %}Update your organization details below.{% endif %}
+      </p>
+    </div>
+    <div class="card-body">
+      <div id="alertBox" class="mb-3"></div>
+
+      <div class="form-group">
+        <label class="form-label">Organization Name <span style="color:var(--danger);">*</span></label>
+        <input type="text" id="organization_name" class="form-control"
+               placeholder="e.g. LifeCare Foundation, Tata Trust"
+               value="{{ profile.organization_name if profile else '' }}">
+      </div>
+
+      <!-- Location with Google Maps picker -->
+      <div class="form-group">
+        <label class="form-label">Location / Headquarters</label>
+        <input type="text" id="location" class="form-control"
+               placeholder="Search city or address…"
+               value="{{ profile.location if profile and profile.location else '' }}"
+               autocomplete="off">
+        <p class="form-hint">Start typing to search, or click on the map to pin your location.</p>
+
+        <!-- Map renders here; fallback if Maps API not loaded -->
+        <div id="map" style="display:none;"></div>
+        <div id="map-placeholder">
+          <span style="font-size:2rem;">🗺️</span>
+          <span>Map loads after entering your Google Maps API key in the template.</span>
+          <span style="font-size:0.78rem;">You can still type your location manually above.</span>
+        </div>
+
+        <input type="hidden" id="latitude"  value="{{ profile.latitude  if profile and profile.latitude  else '' }}">
+        <input type="hidden" id="longitude" value="{{ profile.longitude if profile and profile.longitude else '' }}">
+
+        {% if profile and profile.latitude and profile.longitude %}
+        <div style="margin-top:6px;font-size:0.8rem;color:var(--success);">
+          📍 Saved coordinates: {{ profile.latitude }}, {{ profile.longitude }}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if profile %}
+      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:16px;margin-bottom:20px;">
+        <div style="font-size:0.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;">Current Fund Status</div>
+        <div class="d-flex gap-5 flex-wrap">
+          <div>
+            <div style="font-size:1.4rem;font-weight:800;color:var(--primary-dark);padding: auto;;">₹{{ "{:,}".format(profile.total_funds) }}</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">Total Funds Added</div>
+          </div>
+          <div>
+            <div style="font-size:1.4rem;font-weight:800;color:var(--success);padding: auto;">₹{{ "{:,}".format(profile.remaining_funds) }}</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">Remaining Funds</div>
+          </div>
+          <div>
+            <div style="font-size:1.4rem;font-weight:800;color:var(--accent);padding: auto;">₹{{ "{:,}".format(profile.total_funds - profile.remaining_funds) }}</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">Allocated So Far</div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Verification document -->
+      <div class="form-group">
+        <label class="form-label">
+          Verification Document
+          {% if not profile %}<span style="color:var(--danger);">*</span>{% else %}<span style="color:var(--text-muted);font-size:0.82rem;"> (upload to replace)</span>{% endif %}
+        </label>
+        <input type="file" id="verification_doc" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+        <p class="form-hint">Registration certificate, trust deed, or CSR authorization letter. PDF, JPG, PNG accepted.</p>
+        {% if profile and profile.verification_doc %}
+        <div style="margin-top:6px;">
+          <a href="{{ url_for('serve_document', filepath=profile.verification_doc) }}" target="_blank" class="btn btn-sm btn-outline">📄 View Current Document</a>
+        </div>
+        {% endif %}
+      </div>
+
+      <button onclick="saveProfile()" class="btn btn-primary btn-block" id="saveBtn">
+        {% if profile %}Update Profile{% else %}Submit for Approval →{% endif %}
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let map, marker, autocomplete;
+
+function initMap() {
+  // Hide placeholder, show actual map
+  document.getElementById('map-placeholder').style.display = 'none';
+  document.getElementById('map').style.display = 'block';
+
+  const savedLat = parseFloat(document.getElementById('latitude').value)  || 20.5937;
+  const savedLng = parseFloat(document.getElementById('longitude').value) || 78.9629;
+
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: savedLat, lng: savedLng },
+    zoom: document.getElementById('latitude').value ? 13 : 5,
+    mapTypeControl: false, streetViewControl: false,
+  });
+
+  if (document.getElementById('latitude').value) {
+    marker = new google.maps.Marker({ position: { lat: savedLat, lng: savedLng }, map, draggable: true });
+    marker.addListener('dragend', updateFromMarker);
+  }
+
+  // Places Autocomplete on the location input
+  autocomplete = new google.maps.places.Autocomplete(
+    document.getElementById('location'),
+    { componentRestrictions: { country: 'in' } }
+  );
+  autocomplete.addListener('place_changed', function() {
+    const place = autocomplete.getPlace();
+    if (!place.geometry) return;
+    const lat = place.geometry.location.lat();
+    const lng = place.geometry.location.lng();
+    document.getElementById('latitude').value  = lat;
+    document.getElementById('longitude').value = lng;
+    map.setCenter({ lat, lng });
+    map.setZoom(13);
+    if (marker) marker.setMap(null);
+    marker = new google.maps.Marker({ position: { lat, lng }, map, draggable: true });
+    marker.addListener('dragend', updateFromMarker);
+  });
+
+  // Click on map to drop a pin
+  map.addListener('click', function(e) {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    document.getElementById('latitude').value  = lat.toFixed(6);
+    document.getElementById('longitude').value = lng.toFixed(6);
+    if (marker) marker.setMap(null);
+    marker = new google.maps.Marker({ position: e.latLng, map, draggable: true });
+    marker.addListener('dragend', updateFromMarker);
+    // Reverse geocode
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ location: e.latLng }, function(results, status) {
+      if (status === 'OK' && results[0]) {
+        document.getElementById('location').value = results[0].formatted_address;
+      }
+    });
+  });
+}
+
+function updateFromMarker() {
+  const pos = marker.getPosition();
+  document.getElementById('latitude').value  = pos.lat().toFixed(6);
+  document.getElementById('longitude').value = pos.lng().toFixed(6);
+}
+
+async function saveProfile() {
+  const org_name  = document.getElementById('organization_name').value.trim();
+  const location  = document.getElementById('location').value.trim();
+  const latitude  = document.getElementById('latitude').value.trim();
+  const longitude = document.getElementById('longitude').value.trim();
+  const docFile   = document.getElementById('verification_doc').files[0];
+  const alertBox  = document.getElementById('alertBox');
+  const btn       = document.getElementById('saveBtn');
+
+  if (!org_name) {
+    alertBox.innerHTML = '<div class="alert alert-danger">Organization name is required.</div>';
+    return;
+  }
+
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="loader"></span> Saving...';
+
+  try {
+    const fd = new FormData();
+    fd.append('organization_name', org_name);
+    fd.append('location',  location);
+    fd.append('latitude',  latitude);
+    fd.append('longitude', longitude);
+    if (docFile) fd.append('verification_doc', docFile);
+
+    const res  = await fetch('/funder/setup-profile', { method: 'POST', body: fd });
+    const data = await res.json();
+
+    if (data.success) {
+      alertBox.innerHTML = `<div class="alert alert-success">✅ ${data.message} Redirecting...</div>`;
+      setTimeout(() => window.location.href = '/funder-dashboard', 1200);
+    } else {
+      alertBox.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+      btn.disabled  = false;
+      btn.innerHTML = '{% if profile %}Update Profile{% else %}Submit for Approval →{% endif %}';
+    }
+  } catch(e) {
+    alertBox.innerHTML = '<div class="alert alert-danger">An error occurred.</div>';
+    btn.disabled  = false;
+    btn.innerHTML = '{% if profile %}Update Profile{% else %}Submit for Approval →{% endif %}';
+  }
+}
+</script>
+{% endblock %}

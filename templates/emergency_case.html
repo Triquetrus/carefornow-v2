@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% block title %}New Emergency Case{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,var(--primary-dark),var(--primary));padding:36px 0;color:#fff;">
+  <div class="container">
+    <a href="{{ url_for('dashboard') }}" style="color:rgba(255,255,255,0.75);text-decoration:none;font-size:0.85rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;">← Back to Dashboard</a>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;">🆘 New Emergency Case</h1>
+    <p style="opacity:0.85;margin-top:6px;">Fill in the details. You can apply for funding immediately after submitting.</p>
+  </div>
+</div>
+
+<div class="container-md" style="padding-top:32px;padding-bottom:48px;">
+
+  <div class="steps mb-4">
+    <div class="step active" id="step-1-indicator"><div class="step-circle">1</div><div class="step-label">Patient Info</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step-2-indicator"><div class="step-circle">2</div><div class="step-label">Medical Details</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step-3-indicator"><div class="step-circle">3</div><div class="step-label">Cost & Urgency</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step-4-indicator"><div class="step-circle">4</div><div class="step-label">Documents</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step-5-indicator"><div class="step-circle">5</div><div class="step-label">Review</div></div>
+  </div>
+
+  <div id="alertBox"></div>
+
+  <!-- STEP 1 -->
+  <div id="step-1" class="card">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">👤 Step 1: Patient Information</h3>
+    </div>
+    <div class="card-body">
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Patient Full Name *</label>
+          <input type="text" id="patient_name" class="form-control" placeholder="e.g. Ramesh Kumar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Age *</label>
+          <input type="number" id="age" class="form-control" placeholder="Patient age" min="0" max="120">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Gender *</label>
+          <select id="gender" class="form-control">
+            <option value="">Select gender</option>
+            <option>Male</option><option>Female</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Relationship to You</label>
+          <select id="relationship" class="form-control">
+            <option>Self</option><option>Spouse</option><option>Parent</option>
+            <option>Child</option><option>Sibling</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <button onclick="goToStep(2)" class="btn btn-primary">Next: Medical Details →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="step-2" class="card" style="display:none;">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">🏥 Step 2: Medical Details</h3>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Type of Illness / Condition *</label>
+        <select id="illness_type" class="form-control">
+          <option value="">Select illness type</option>
+          {% for illness in illness_types %}<option>{{ illness }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hospital Name *</label>
+        <input type="text" id="hospital_name" class="form-control" placeholder="e.g. KEM Hospital, Mumbai">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hospital Location / City</label>
+        <input type="text" id="hospital_location" class="form-control" placeholder="e.g. Mumbai, Maharashtra">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Brief Description</label>
+        <textarea id="description" class="form-control" rows="4" placeholder="Describe the patient's condition and why urgent funding is needed..."></textarea>
+      </div>
+      <div class="d-flex justify-between">
+        <button onclick="goToStep(1)" class="btn btn-outline">← Back</button>
+        <button onclick="goToStep(3)" class="btn btn-primary">Next: Cost & Urgency →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div id="step-3" class="card" style="display:none;">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">💰 Step 3: Cost & Urgency</h3>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Estimated Treatment Cost (₹) *</label>
+        <input type="number" id="estimated_cost" class="form-control" placeholder="e.g. 250000" min="0">
+        <p class="form-hint">Total estimated cost as quoted by the hospital</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Level of Urgency *</label>
+        <div class="urgency-options">
+          <div class="urgency-option critical" onclick="selectUrgency(1,this)">
+            <div style="font-size:24px;margin-bottom:4px;">🚨</div><div>Critical</div>
+            <div style="font-size:0.75rem;opacity:0.8;margin-top:3px;">Life at risk now</div>
+          </div>
+          <div class="urgency-option high" onclick="selectUrgency(2,this)">
+            <div style="font-size:24px;margin-bottom:4px;">⚠️</div><div>High</div>
+            <div style="font-size:0.75rem;opacity:0.8;margin-top:3px;">Urgent, within days</div>
+          </div>
+          <div class="urgency-option medium" onclick="selectUrgency(3,this)">
+            <div style="font-size:24px;margin-bottom:4px;">🟡</div><div>Medium</div>
+            <div style="font-size:0.75rem;opacity:0.8;margin-top:3px;">Within a week</div>
+          </div>
+        </div>
+        <input type="hidden" id="urgency" value="">
+      </div>
+      <div class="d-flex justify-between">
+        <button onclick="goToStep(2)" class="btn btn-outline">← Back</button>
+        <button onclick="goToStep(4)" class="btn btn-primary">Next: Upload Documents →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Documents -->
+  <div id="step-4" class="card" style="display:none;">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">📁 Step 4: Upload Documents</h3>
+      <p style="color:var(--text-muted);font-size:0.9rem;margin-top:4px;">
+        Aadhaar is <strong>required</strong>. All other documents are optional but improve approval chances.
+      </p>
+    </div>
+    <div class="card-body">
+
+      <div class="alert alert-warning" style="margin-bottom:20px;">
+        ⚠️ <strong>Aadhaar card must be uploaded</strong> to submit this case.
+      </div>
+
+      <!-- Fixed document types with checkboxes -->
+      <div class="form-group">
+        <label class="form-label">Select documents you have available:</label>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+          {% for doc in doc_types %}
+          <label id="label-{{ doc.key }}"
+                 style="display:flex;align-items:center;gap:10px;padding:12px 16px;border:2px solid {% if doc.required %}var(--primary){% else %}var(--border){% endif %};border-radius:var(--radius-sm);cursor:pointer;">
+            <input type="checkbox" id="chk-{{ doc.key }}"
+                   {% if doc.required %}checked disabled{% endif %}
+                   style="width:18px;height:18px;"
+                   onchange="toggleDocField('{{ doc.key }}', this)">
+            <span style="font-weight:{% if doc.required %}700{% else %}500{% endif %};">
+              {{ doc.label }}{% if doc.required %}<span style="color:var(--danger);"> *</span>{% endif %}
+              {% if not doc.required %}<span style="font-size:0.82rem;color:var(--text-muted);"> (optional)</span>{% endif %}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Upload inputs for fixed types -->
+      <div style="display:flex;flex-direction:column;gap:14px;" id="fixed-upload-fields">
+        {% for doc in doc_types %}
+        <div id="upload-{{ doc.key }}" style="{% if not doc.required %}display:none;{% endif %}background:var(--bg);padding:14px;border-radius:var(--radius-sm);border:1px solid var(--border);">
+          <label class="form-label">
+            Upload {{ doc.label }}{% if doc.required %} <span style="color:var(--danger);">*</span>{% endif %}
+          </label>
+          <input type="file" id="file-{{ doc.key }}" class="form-control" accept=".pdf,.jpg,.jpeg,.png"
+                 {% if doc.required %}required{% endif %}>
+          <p class="form-hint">Accepted: PDF, JPG, PNG</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Additional documents section -->
+      <div style="margin-top:24px;padding-top:20px;border-top:2px dashed var(--border);">
+        <div class="d-flex align-center justify-between" style="margin-bottom:12px;">
+          <div>
+            <div style="font-weight:700;color:var(--primary-dark);">Additional Documents</div>
+            <div style="font-size:0.82rem;color:var(--text-muted);">Hospital letters, prescriptions, cost estimates, etc.</div>
+          </div>
+          <button type="button" onclick="addExtraDoc()" class="btn btn-sm btn-outline">+ Add File</button>
+        </div>
+        <div id="extra-doc-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+
+      <div class="d-flex justify-between" style="margin-top:24px;">
+        <button onclick="goToStep(3)" class="btn btn-outline">← Back</button>
+        <button onclick="goToStep(5)" class="btn btn-primary">Review Case →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5: Review -->
+  <div id="step-5" class="card" style="display:none;">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">📋 Step 5: Review & Submit</h3>
+    </div>
+    <div class="card-body">
+      <div id="reviewContent" style="display:grid;gap:16px;"></div>
+      <div class="alert alert-info mt-3" style="margin-top:16px;">
+        🔔 You can apply for funding <strong>immediately</strong> after submitting — no verification required.
+      </div>
+      <div class="d-flex justify-between mt-3" style="margin-top:16px;">
+        <button onclick="goToStep(4)" class="btn btn-outline">← Edit</button>
+        <button onclick="submitCase()" class="btn btn-accent btn-lg" id="submitBtn">🚀 Submit & Find Funding</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedUrgency  = null;
+let extraDocCount    = 0;
+
+function selectUrgency(val, el) {
+  document.querySelectorAll('.urgency-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedUrgency = val;
+  document.getElementById('urgency').value = val;
+}
+
+function toggleDocField(key, chk) {
+  if (key === 'aadhaar') return;
+  const field  = document.getElementById('upload-' + key);
+  const label  = document.getElementById('label-' + key);
+  const fileIn = document.getElementById('file-' + key);
+  field.style.display = chk.checked ? '' : 'none';
+  fileIn.required = chk.checked;
+  label.style.borderColor = chk.checked ? 'var(--primary)' : 'var(--border)';
+}
+
+function addExtraDoc() {
+  extraDocCount++;
+  const div = document.createElement('div');
+  div.id    = `extra-doc-${extraDocCount}`;
+  div.style.cssText = 'display:flex;align-items:center;gap:10px;background:var(--bg);padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);';
+  div.innerHTML = `
+    <input type="file" name="doc_extra_${extraDocCount}" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex:1;">
+    <button type="button" onclick="this.parentElement.remove()" class="btn btn-sm" style="background:#fee2e2;color:var(--danger);border:none;padding:6px 10px;">✕</button>
+  `;
+  document.getElementById('extra-doc-list').appendChild(div);
+}
+
+function goToStep(step) {
+  const alert = document.getElementById('alertBox');
+
+  if (step > 1) {
+    if (!document.getElementById('patient_name').value.trim() ||
+        !document.getElementById('age').value ||
+        !document.getElementById('gender').value) {
+      alert.innerHTML = '<div class="alert alert-danger">Please fill in all required fields in Step 1.</div>';
+      showStep(1); return;
+    }
+  }
+  if (step > 2) {
+    if (!document.getElementById('illness_type').value ||
+        !document.getElementById('hospital_name').value.trim()) {
+      alert.innerHTML = '<div class="alert alert-danger">Please fill illness type and hospital name.</div>';
+      showStep(2); return;
+    }
+  }
+  if (step > 3) {
+    if (!document.getElementById('estimated_cost').value || !selectedUrgency) {
+      alert.innerHTML = '<div class="alert alert-danger">Please fill estimated cost and select urgency.</div>';
+      showStep(3); return;
+    }
+  }
+  if (step > 4) {
+    const aadhaar = document.getElementById('file-aadhaar');
+    if (!aadhaar.files || !aadhaar.files.length) {
+      alert.innerHTML = '<div class="alert alert-danger">⚠️ Aadhaar card upload is required.</div>';
+      showStep(4); return;
+    }
+  }
+
+  alert.innerHTML = '';
+  showStep(step);
+  if (step === 5) buildReview();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showStep(step) {
+  for (let i = 1; i <= 5; i++) {
+    document.getElementById(`step-${i}`).style.display = i === step ? '' : 'none';
+    const ind = document.getElementById(`step-${i}-indicator`);
+    ind.classList.remove('active','done');
+    if (i < step)      ind.classList.add('done');
+    else if (i===step) ind.classList.add('active');
+  }
+}
+
+function buildReview() {
+  const docLabels = { aadhaar:'Aadhaar Card', income_cert:'Income Certificate', ration_card:'Ration Card', ews_cert:'EWS Certificate' };
+  const uploaded  = [];
+  for (const [key, label] of Object.entries(docLabels)) {
+    const inp = document.getElementById('file-'+key);
+    if (inp && inp.files && inp.files.length) uploaded.push(`${label} (${inp.files[0].name})`);
+  }
+  // Count extra docs
+  const extras = document.querySelectorAll('#extra-doc-list input[type=file]');
+  extras.forEach(e => { if (e.files && e.files.length) uploaded.push(`Additional: ${e.files[0].name}`); });
+
+  document.getElementById('reviewContent').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      ${[
+        ['👤 Patient', document.getElementById('patient_name').value],
+        ['🎂 Age',     document.getElementById('age').value + ' years'],
+        ['⚧ Gender',  document.getElementById('gender').value],
+        ['🩺 Illness', document.getElementById('illness_type').value],
+        ['🏥 Hospital',document.getElementById('hospital_name').value],
+        ['📍 Location',document.getElementById('hospital_location').value || '—'],
+        ['💰 Cost',   '₹'+Number(document.getElementById('estimated_cost').value).toLocaleString('en-IN')],
+        ['🚨 Urgency',['','Critical 🚨','High ⚠️','Medium 🟡'][selectedUrgency]||'—'],
+      ].map(([k,v])=>`<div style="background:var(--bg);padding:12px 14px;border-radius:var(--radius-sm);"><div style="font-size:0.75rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:2px;">${k}</div><div style="font-weight:700;">${v}</div></div>`).join('')}
+    </div>
+    ${document.getElementById('description').value ? `<div style="background:var(--bg);padding:12px 14px;border-radius:var(--radius-sm);"><div style="font-size:0.75rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;">📝 Description</div><div style="font-size:0.92rem;">${document.getElementById('description').value}</div></div>`:''}
+    ${uploaded.length ? `<div style="background:var(--bg);padding:12px 14px;border-radius:var(--radius-sm);"><div style="font-size:0.75rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:6px;">📁 Documents (${uploaded.length})</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${uploaded.map(d=>`<span class="badge badge-primary">✓ ${d}</span>`).join('')}</div></div>`:''}
+  `;
+}
+
+async function submitCase() {
+  const alertBox = document.getElementById('alertBox');
+  const btn      = document.getElementById('submitBtn');
+
+  const aadhaar = document.getElementById('file-aadhaar');
+  if (!aadhaar.files || !aadhaar.files.length) {
+    alertBox.innerHTML = '<div class="alert alert-danger">⚠️ Aadhaar card is required.</div>';
+    goToStep(4); return;
+  }
+
+  btn.innerHTML = '<span class="loader"></span> Submitting...';
+  btn.disabled  = true;
+
+  const fd = new FormData();
+  fd.append('patient_name',      document.getElementById('patient_name').value.trim());
+  fd.append('age',               document.getElementById('age').value);
+  fd.append('gender',            document.getElementById('gender').value);
+  fd.append('illness_type',      document.getElementById('illness_type').value);
+  fd.append('hospital_name',     document.getElementById('hospital_name').value.trim());
+  fd.append('hospital_location', document.getElementById('hospital_location').value.trim());
+  fd.append('description',       document.getElementById('description').value.trim());
+  fd.append('estimated_cost',    document.getElementById('estimated_cost').value);
+  fd.append('urgency',           selectedUrgency);
+
+  const fixedKeys = ['aadhaar','income_cert','ration_card','ews_cert'];
+  for (const key of fixedKeys) {
+    const inp = document.getElementById('file-'+key);
+    if (inp && inp.files && inp.files.length) fd.append('doc_'+key, inp.files[0]);
+  }
+  // Extra documents
+  document.querySelectorAll('#extra-doc-list input[type=file]').forEach(inp => {
+    if (inp.files && inp.files.length) fd.append('doc_extra', inp.files[0]);
+  });
+
+  try {
+    const res  = await fetch('/emergency-case', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Case submitted! Redirecting to funding options...', 'success');
+      setTimeout(() => { window.location.href = `/funding-options/${data.case_id}`; }, 1000);
+    } else {
+      alertBox.innerHTML = `<div class="alert alert-danger">${data.message || 'Submission failed.'}</div>`;
+      btn.innerHTML = '🚀 Submit & Find Funding'; btn.disabled = false;
+    }
+  } catch(e) {
+    alertBox.innerHTML = '<div class="alert alert-danger">An error occurred. Please try again.</div>';
+    btn.innerHTML = '🚀 Submit & Find Funding'; btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

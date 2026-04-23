@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-left">
+    <a href="{{ url_for('index') }}" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:0.85rem;font-weight:700;margin-bottom:40px;display:block;">← Back to Home</a>
+    <h2>Welcome back to CareForNow</h2>
+    <p>Log in to access your dashboard. Your role is detected automatically from your registered account.</p>
+    <div class="auth-bullets">
+      <div class="auth-bullet">Patient/Family — submit &amp; track cases</div>
+      <div class="auth-bullet">Hospital Staff — verify patient cases</div>
+      <div class="auth-bullet">Funder (NGO/CSR) — approve funding</div>
+      <div class="auth-bullet">Admin — manage entire platform</div>
+    </div>
+  </div>
+  <div class="auth-right">
+    <div class="auth-form-box">
+      <h3>Sign In</h3>
+      <p class="auth-subtitle">Your dashboard is determined by your registered role</p>
+      <div id="alertBox"></div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" id="email" class="form-control" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div style="position:relative;">
+          <input type="password" id="password" class="form-control" placeholder="••••••••"
+                 autocomplete="current-password" style="padding-right:44px;">
+          <button type="button" onclick="togglePwd()" id="pwdToggle"
+                  style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;">👁</button>
+        </div>
+      </div>
+      <button onclick="handleLogin()" class="btn btn-primary btn-block btn-lg mt-2" id="loginBtn">Sign In →</button>
+      <hr>
+      <p class="text-center" style="font-size:0.9rem;color:var(--text-muted);">
+        Don't have an account? <a href="{{ url_for('register') }}" style="font-weight:700;">Register here</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePwd() {
+  const inp = document.getElementById('password');
+  const btn = document.getElementById('pwdToggle');
+  if (inp.type === 'password') { inp.type = 'text';     btn.textContent = '🙈'; }
+  else                         { inp.type = 'password'; btn.textContent = '👁';  }
+}
+
+async function handleLogin() {
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const btn      = document.getElementById('loginBtn');
+  const alertBox = document.getElementById('alertBox');
+
+  if (!email || !password) {
+    alertBox.innerHTML = '<div class="alert alert-danger">Please enter your email and password.</div>';
+    return;
+  }
+  btn.innerHTML = '<span class="loader"></span> Signing in...';
+  btn.disabled  = true;
+
+  try {
+    const res  = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alertBox.innerHTML = '<div class="alert alert-success">✅ Login successful! Redirecting...</div>';
+      setTimeout(() => window.location.href = data.redirect, 700);
+    } else {
+      alertBox.innerHTML = `<div class="alert alert-danger">${data.message || 'Login failed.'}</div>`;
+      btn.innerHTML = 'Sign In →'; btn.disabled = false;
+    }
+  } catch(e) {
+    alertBox.innerHTML = '<div class="alert alert-danger">An error occurred. Please try again.</div>';
+    btn.innerHTML = 'Sign In →'; btn.disabled = false;
+  }
+}
+document.querySelectorAll('input').forEach(i => i.addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); }));
+</script>
+{% endblock %}

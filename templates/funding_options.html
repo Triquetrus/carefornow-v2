@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block title %}Funding Options{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,var(--primary-dark),var(--primary));padding:36px 0;color:#fff;">
+  <div class="container">
+    <a href="{{ url_for('dashboard') }}" style="color:rgba(255,255,255,0.75);text-decoration:none;font-size:0.85rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;">← Back to Dashboard</a>
+    <div class="d-flex align-center justify-between flex-wrap gap-2">
+      <div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;">🎯 Apply for Funding</h1>
+        <p style="opacity:0.85;margin-top:6px;">Applying for: <strong>{{ case.patient_name }}</strong> — {{ case.illness_type }}</p>
+      </div>
+      <div style="background:rgba(255,255,255,0.15);padding:14px 20px;border-radius:var(--radius);text-align:center;">
+        <div style="font-size:0.78rem;opacity:0.75;text-transform:uppercase;font-weight:700;">Amount Needed</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:800;">
+          ₹{{ "{:,}".format(case.amount_remaining) }}
+          {% if case.amount_received %}<div style="font-size:0.85rem;opacity:0.8;">of ₹{{ "{:,}".format(case.estimated_cost) }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container" style="padding-top:32px;padding-bottom:48px;">
+
+  <!-- CASE SUMMARY -->
+  <div class="card mb-4" style="margin-bottom:24px;border-left:4px solid var(--primary);">
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;">
+        {% for label, value in [
+          ('🏥 Hospital',  case.hospital_name),
+          ('🩺 Condition', case.illness_type),
+          ('🎂 Age',       case.age ~ ' years'),
+          ('⚧ Gender',    case.gender),
+          ('🚨 Urgency',  ['','Critical','High','Medium'][case.urgency|int] if case.urgency else 'Not set'),
+          ('📋 Status',   case.display_status)
+        ] %}
+        <div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-bottom:2px;">{{ label }}</div>
+          <div style="font-weight:700;font-size:0.92rem;">{{ value }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% if case.is_verified %}
+      <div style="margin-top:12px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;">
+        <span class="badge badge-success">✅ Hospital Verified</span>
+        {% if case.credibility_score %}
+        <span class="badge badge-info">⭐ Credibility Score: {{ case.credibility_score }}/100</span>
+        {% endif %}
+        <span style="font-size:0.82rem;color:var(--text-muted);">Verified cases receive higher trust from funders</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="alertBox"></div>
+
+  {% if funders %}
+  <div style="margin-bottom:16px;">
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--primary-dark);">
+      {{ funders | length }} Funding Organisation{{ 's' if funders|length != 1 else '' }} Available
+    </h2>
+    <p style="color:var(--text-muted);font-size:0.9rem;">
+      Sorted by proximity to <strong>{{ case_location or 'your hospital' }}</strong>, then by available funds.
+      Apply to one or more — they review your case and allocate funds directly.
+    </p>
+  </div>
+
+  <div style="display:grid;gap:16px;">
+    {% for funder in funders %}
+    {% set app_status = applied_orgs_status.get(funder.user_id, None) %}
+
+    {# Determine location match label #}
+    {% set loc_badge = '' %}
+    {% if case_location and funder.location %}
+      {% set fl = funder.location | lower %}
+      {% set cl = case_location | lower %}
+      {% if fl == cl %}{% set loc_badge = 'nearby' %}
+      {% elif cl in fl or fl in cl %}{% set loc_badge = 'region' %}
+      {% endif %}
+    {% endif %}
+
+    <div class="card" id="card-{{ funder.user_id }}" style="border-left:4px solid
+      {%- if app_status == 'approved' %} var(--success)
+      {%- elif app_status == 'submitted' %} var(--accent)
+      {%- elif app_status == 'rejected' %} var(--border)
+      {%- elif funder.remaining_funds > 0 %} var(--primary)
+      {%- else %} var(--border){% endif %};">
+      <div class="card-body">
+        <div class="d-flex align-center justify-between flex-wrap gap-2">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+              <div style="width:42px;height:42px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;font-weight:800;flex-shrink:0;">
+                {{ funder.organization_name[0].upper() }}
+              </div>
+              <div>
+                <div style="font-weight:800;font-size:1.05rem;color:var(--primary-dark);">{{ funder.organization_name }}</div>
+                <div style="font-size:0.82rem;color:var(--text-muted);display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
+                  {% if funder.location %}
+                  <span>📍 {{ funder.location }}</span>
+                  {% if funder.latitude and funder.longitude %}
+                  <a href="https://maps.google.com/?q={{ funder.latitude }},{{ funder.longitude }}"
+                     target="_blank" style="font-size:0.75rem;color:var(--primary);text-decoration:none;">
+                    View map ↗
+                  </a>
+                  {% endif %}
+                  {% if loc_badge == 'nearby' %}
+                  <span class="badge badge-success" style="font-size:0.7rem;">📍 Nearby</span>
+                  {% elif loc_badge == 'region' %}
+                  <span class="badge badge-info" style="font-size:0.7rem;">📍 Same Region</span>
+                  {% endif %}
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+              {% if app_status == 'approved' %}
+              <span class="badge badge-success">✅ Funding Active</span>
+              <span style="font-size:0.82rem;color:var(--text-muted);">This funder has contributed to your case</span>
+              {% elif app_status == 'submitted' %}
+              <span class="badge badge-warning">⏳ Application Pending</span>
+              <span style="font-size:0.82rem;color:var(--text-muted);">Awaiting their review</span>
+              {% elif app_status == 'rejected' %}
+              <span class="badge badge-danger">❌ Previously Rejected</span>
+              <span style="font-size:0.82rem;color:var(--text-muted);">You can apply again</span>
+              {% elif funder.remaining_funds > 0 %}
+              <span class="badge badge-success">✅ Active Funder</span>
+              <span class="badge badge-info">💰 ₹{{ "{:,}".format(funder.remaining_funds) }} available</span>
+              {% else %}
+              <span class="badge" style="background:#f3f4f6;color:#6b7280;">No funds currently</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div>
+            {% if app_status == 'approved' %}
+            <button class="btn btn-success" disabled style="opacity:0.85;cursor:default;">✅ Active</button>
+            {% elif app_status == 'submitted' %}
+            <button class="btn btn-outline" disabled style="opacity:0.7;cursor:default;">⏳ Pending</button>
+            {% elif app_status == 'rejected' %}
+            <button
+              onclick="applyFunding('{{ case.id }}', '{{ funder.user_id }}', '{{ funder.organization_name | replace("'", "\\'") }}')"
+              class="btn btn-primary"
+              id="apply-{{ funder.user_id }}">
+              Apply Again →
+            </button>
+            {% elif funder.remaining_funds > 0 %}
+            <button
+              onclick="applyFunding('{{ case.id }}', '{{ funder.user_id }}', '{{ funder.organization_name | replace("'", "\\'") }}')"
+              class="btn btn-primary"
+              id="apply-{{ funder.user_id }}">
+              Apply Now →
+            </button>
+            {% else %}
+            <button class="btn btn-outline" disabled style="opacity:0.5;cursor:not-allowed;">
+              No Funds Available
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="card" style="text-align:center;padding:48px 24px;">
+    <div style="font-size:3rem;margin-bottom:16px;">🏢</div>
+    <h3 style="font-weight:800;color:var(--primary-dark);">No Funding Organisations Available</h3>
+    <p style="color:var(--text-muted);margin-top:8px;">
+      No verified funding organisations are currently registered. Your case is saved and will be visible once funders join and are approved.
+    </p>
+    <a href="{{ url_for('track_status', case_id=case.id) }}" class="btn btn-primary" style="margin-top:20px;">
+      📊 Track Your Case
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- NEXT STEPS -->
+  <div class="card mt-4" style="margin-top:28px;border-left:4px solid var(--accent);">
+    <div class="card-body">
+      <h3 style="font-weight:800;color:var(--primary-dark);margin-bottom:14px;">📋 What Happens Next</h3>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        {% for step, text in [
+          ('1', 'Apply to available funding organisations — you can apply to multiple'),
+          ('2', 'The funder reviews your case and allocates funds directly'),
+          ('3', 'Track your case status and funding received on your dashboard'),
+          ('4', 'Hospital verification adds a trust badge and a credibility score, increasing your chances'),
+        ] %}
+        <div style="display:flex;align-items:flex-start;gap:12px;">
+          <div style="width:28px;height:28px;background:var(--primary);border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;flex-shrink:0;">{{ step }}</div>
+          <div style="padding-top:4px;font-size:0.92rem;">{{ text }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="d-flex gap-2 mt-3" style="margin-top:16px;">
+        <a href="{{ url_for('track_status', case_id=case.id) }}" class="btn btn-primary">📊 Track Status</a>
+        <a href="{{ url_for('nearby_support') }}" class="btn btn-outline">📍 View All Funders</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function applyFunding(caseId, orgId, orgName) {
+  const btn = document.getElementById('apply-' + orgId);
+  if (btn) { btn.innerHTML = '<span class="loader"></span>'; btn.disabled = true; }
+
+  try {
+    const res  = await fetch('/apply-funding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ case_id: caseId, org_id: orgId, org_name: orgName })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Application sent to ${orgName}!`, 'success');
+      document.getElementById('alertBox').innerHTML =
+        `<div class="alert alert-success">✅ Application submitted to <strong>${orgName}</strong>. They will review your case and allocate funds.</div>`;
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      if (btn) { btn.innerHTML = 'Apply Now →'; btn.disabled = false; }
+      showToast(data.message || 'Failed. Please try again.', 'error');
+      document.getElementById('alertBox').innerHTML =
+        `<div class="alert alert-danger">${data.message || 'Application failed.'}</div>`;
+    }
+  } catch(e) {
+    if (btn) { btn.innerHTML = 'Apply Now →'; btn.disabled = false; }
+    showToast('An error occurred.', 'error');
+  }
+}
+</script>
+{% endblock %}

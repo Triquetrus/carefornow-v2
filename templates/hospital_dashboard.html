@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}Hospital Dashboard{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8);padding:36px 0 60px;color:#fff;margin-bottom:-32px;">
+  <div class="container">
+    <div class="d-flex align-center justify-between flex-wrap gap-2">
+      <div>
+        <div style="background:rgba(255,255,255,0.15);padding:4px 12px;border-radius:99px;font-size:0.78rem;font-weight:700;text-transform:uppercase;display:inline-block;margin-bottom:10px;">🏥 Hospital Staff Portal</div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;">
+          Welcome, {{ session.get('name', 'Hospital Staff') }}
+        </h1>
+        <p style="opacity:0.85;margin-top:6px;">Review and verify emergency cases. Verification adds a trust badge — it does not block funding.</p>
+      </div>
+      <a href="{{ url_for('logout') }}" class="btn" style="background:rgba(255,255,255,0.15);color:#fff;border:2px solid rgba(255,255,255,0.3);">Logout</a>
+    </div>
+  </div>
+</div>
+
+<div class="container" style="padding-top:0;padding-bottom:48px;">
+
+  <div class="stats-grid mb-4" style="margin-bottom:28px;">
+    <div class="stat-card" style="border-left:4px solid var(--accent);">
+      <div class="stat-icon" style="background:#ffedd5;">📋</div>
+      <div class="stat-value">{{ submitted_cases | length }}</div>
+      <div class="stat-label">Awaiting Verification</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--success);">
+      <div class="stat-icon" style="background:#dcfce7;">✅</div>
+      <div class="stat-value">{{ verified_cases | length }}</div>
+      <div class="stat-label">Verified by You</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--danger);">
+      <div class="stat-icon" style="background:#fee2e2;">🚨</div>
+      <div class="stat-value">{{ submitted_cases | selectattr('urgency','eq',1) | list | length }}</div>
+      <div class="stat-label">Critical Pending</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--primary);">
+      <div class="stat-icon" style="background:#d1fae5;">📊</div>
+      <div class="stat-value">{{ all_cases | length }}</div>
+      <div class="stat-label">Total Active Cases</div>
+    </div>
+  </div>
+
+  <div id="alertBox" class="mb-3"></div>
+
+  <!-- PENDING VERIFICATION -->
+  <div class="card mb-4" style="margin-bottom:24px;">
+    <div class="card-header">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:var(--primary-dark);">📋 Cases Awaiting Verification</h3>
+        <span class="badge badge-warning">{{ submitted_cases | length }} pending</span>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-top:4px;">
+        Verifying a case adds a ✅ trust badge and increases its visibility with funders. Cases can receive funding regardless of verification status.
+      </p>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+      {% if submitted_cases %}
+      <table class="table">
+        <thead>
+          <tr><th>Patient</th><th>Condition</th><th>Hospital</th><th>Amount</th><th>Urgency</th><th>Submitted</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for case in submitted_cases %}
+          <tr id="row-{{ case.id }}">
+            <td>
+              <div style="font-weight:700;">{{ case.patient_name }}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">{{ case.age }}y · {{ case.gender }}</div>
+            </td>
+            <td><span class="badge badge-accent">{{ case.illness_type }}</span></td>
+            <td style="font-size:0.85rem;">
+              <div>{{ case.hospital_name }}</div>
+              <div style="color:var(--text-muted);font-size:0.78rem;">{{ case.hospital_location }}</div>
+            </td>
+            <td style="font-weight:700;">₹{{ "{:,}".format(case.estimated_cost) }}</td>
+            <td>
+              {% if case.urgency == 1 %}<span class="badge badge-danger">🚨 Critical</span>
+              {% elif case.urgency == 2 %}<span class="badge badge-warning">⚠️ High</span>
+              {% else %}<span class="badge badge-info">🟡 Medium</span>{% endif %}
+            </td>
+            <td style="font-size:0.82rem;color:var(--text-muted);">{{ case.created_at.strftime('%d %b %Y') if case.created_at else '' }}</td>
+            <td>
+              <div class="d-flex gap-1 flex-wrap">
+                <button onclick="viewDocs('{{ case.id }}', '{{ case.patient_name | replace("'","\'") }}')"
+                        class="btn btn-sm btn-outline">📄 Docs</button>
+                <button onclick="verifyCase('{{ case.id }}','verify')"
+                        class="btn btn-sm btn-success" id="verify-{{ case.id }}">✓ Verify</button>
+                <button onclick="verifyCase('{{ case.id }}','reject')"
+                        class="btn btn-sm btn-danger"  id="reject-{{ case.id }}">✗ Reject</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state" style="padding:30px;">
+        <div class="empty-icon">✅</div>
+        <h3>All caught up!</h3>
+        <p>No cases pending verification right now.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- VERIFIED BY YOU -->
+  <div class="card">
+    <div class="card-header">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:var(--primary-dark);">✅ Cases Verified by You</h3>
+        <span class="badge badge-success">{{ verified_cases | length }}</span>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+      {% if verified_cases %}
+      <table class="table">
+        <thead>
+          <tr><th>Patient</th><th>Condition</th><th>Amount</th><th>Funding Status</th><th>Verified</th></tr>
+        </thead>
+        <tbody>
+          {% for case in verified_cases %}
+          <tr>
+            <td style="font-weight:700;">{{ case.patient_name }}</td>
+            <td><span class="badge badge-accent">{{ case.illness_type }}</span></td>
+            <td>
+              <div style="font-weight:700;">₹{{ "{:,}".format(case.estimated_cost) }}</div>
+              {% set pct = ((case.amount_received or 0) / case.estimated_cost * 100)|int if case.estimated_cost else 0 %}
+              <div style="font-size:0.75rem;color:var(--text-muted);">{{ pct }}% funded</div>
+            </td>
+            <td>
+              {% if case.status == 'fully_funded' or case.status == 'funded' %}
+                <span class="badge badge-success">💰 Fully Funded</span>
+              {% elif case.status == 'partially_funded' %}
+                <span class="badge badge-accent">💸 Partially Funded</span>
+              {% elif case.status == 'verified' %}
+                <span class="badge badge-info">Awaiting Funding</span>
+              {% elif case.status == 'closed' %}
+                <span class="badge" style="background:#f3f4f6;color:#6b7280;">🔒 Closed</span>
+              {% else %}
+                <span class="badge badge-primary">{{ case.display_status }}</span>
+              {% endif %}
+            </td>
+            <td style="font-size:0.82rem;color:var(--text-muted);">{{ case.created_at.strftime('%d %b %Y') if case.created_at else '' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state" style="padding:24px;">
+        <p>You haven't verified any cases yet.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+<!-- DOCUMENT VERIFICATION MODAL -->
+<div id="docsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:var(--radius-lg);padding:0;max-width:780px;width:95%;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;">
+    <div style="padding:20px 28px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:1;border-radius:var(--radius-lg) var(--radius-lg) 0 0;">
+      <div>
+        <h3 style="font-weight:800;color:var(--primary-dark);margin:0;" id="docsModalTitle">📁 Document Verification</h3>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin:4px 0 0;" id="docsModalSubtitle">Review each document and mark as verified or invalid</p>
+      </div>
+      <button onclick="document.getElementById('docsModal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-muted);line-height:1;">✕</button>
+    </div>
+    <div id="credibilityBanner" style="padding:16px 28px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-bottom:1px solid #bbf7d0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;color:#15803d;margin-bottom:4px;">CREDIBILITY SCORE</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="font-size:2rem;font-weight:800;color:#15803d;" id="scoreDisplay">0</div>
+            <div style="font-size:0.8rem;color:#15803d;">/ 100</div>
+            <div id="scoreBadge" style="padding:3px 10px;border-radius:99px;font-size:0.75rem;font-weight:700;background:#bbf7d0;color:#15803d;">—</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:160px;max-width:300px;">
+          <div style="background:#bbf7d0;border-radius:99px;height:10px;overflow:hidden;">
+            <div id="scoreBar" style="background:#16a34a;width:0%;height:100%;border-radius:99px;transition:width 0.5s;"></div>
+          </div>
+          <div style="font-size:0.75rem;color:#15803d;margin-top:4px;">Aadhaar=40 · Income=25 · Ration=20 · EWS=15</div>
+        </div>
+      </div>
+    </div>
+    <div id="docsModalContent" style="padding:16px 28px 28px;"></div>
+  </div>
+</div>
+
+<!-- Reject Note Modal -->
+<div id="rejectNoteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:var(--radius-lg);padding:28px;max-width:440px;width:95%;box-shadow:var(--shadow-lg);">
+    <h4 style="font-weight:800;color:var(--primary-dark);margin-bottom:8px;">❌ Mark Document Invalid</h4>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">Optionally add a note explaining why this document is invalid (e.g. blurry, expired, mismatch).</p>
+    <textarea id="rejectNoteInput" class="form-control" rows="3" placeholder="Reason (optional)..."></textarea>
+    <div class="d-flex gap-2 mt-3">
+      <button onclick="confirmRejectDoc()" class="btn btn-danger">Confirm Reject</button>
+      <button onclick="document.getElementById('rejectNoteModal').style.display='none'" class="btn btn-outline">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let _pendingRejectDocId = null;
+
+async function viewDocs(caseId, patientName) {
+  try {
+    const res  = await fetch(`/hospital/case-documents/${caseId}`);
+    const data = await res.json();
+    if (!data.success) { showToast('Failed to load documents.', 'error'); return; }
+    document.getElementById('docsModalTitle').textContent = `📁 ${patientName} — Documents`;
+    document.getElementById('docsModalSubtitle').textContent = `Case ID: ${caseId} · Verify each document below`;
+    updateScoreDisplay(data.case.credibility_score || 0);
+    renderDocTable(data.documents);
+    document.getElementById('docsModal').style.display = 'flex';
+  } catch(e) { showToast('Error loading documents.', 'error'); }
+}
+
+function updateScoreDisplay(score) {
+  document.getElementById('scoreDisplay').textContent = score;
+  document.getElementById('scoreBar').style.width = score + '%';
+  const badge = document.getElementById('scoreBadge');
+  if (score >= 80)      { badge.textContent='⭐ High Trust'; badge.style.background='#bbf7d0'; badge.style.color='#15803d'; }
+  else if (score >= 50) { badge.textContent='✅ Moderate';   badge.style.background='#fef9c3'; badge.style.color='#854d0e'; }
+  else if (score > 0)   { badge.textContent='⚠️ Low';        badge.style.background='#fee2e2'; badge.style.color='#991b1b'; }
+  else                  { badge.textContent='— Not Scored';  badge.style.background='#f3f4f6'; badge.style.color='#6b7280'; }
+}
+
+function renderDocTable(docs) {
+  const labels = {
+    aadhaar:     'Aadhaar Card (40 pts)',
+    income_cert: 'Income Certificate (25 pts)',
+    ration_card: 'Ration Card (20 pts)',
+    ews_cert:    'EWS Certificate (15 pts)',
+    additional:  'Additional Document (5 pts)'
+  };
+  if (!docs.length) {
+    document.getElementById('docsModalContent').innerHTML =
+      '<div class="empty-state" style="padding:32px;"><div class="empty-icon">📂</div><h3>No documents uploaded</h3><p>This patient has not uploaded any documents yet.</p></div>';
+    return;
+  }
+  let html = '<div style="display:flex;flex-direction:column;gap:12px;">';
+  docs.forEach(d => {
+    const label = labels[d.doc_type] || d.doc_type;
+    const isVerified = d.is_verified;
+    const isRejected = !isVerified && d.rejection_note;
+    const statusColor = isVerified ? '#15803d' : (isRejected ? '#991b1b' : '#6b7280');
+    const statusBg    = isVerified ? '#dcfce7' : (isRejected ? '#fee2e2' : '#f3f4f6');
+    const statusText  = isVerified ? '✅ Verified' : (isRejected ? '❌ Invalid' : '⏳ Pending');
+    html += `
+    <div id="doccard-${d.id}" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;background:var(--bg);">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="flex:1;min-width:180px;">
+          <div style="font-weight:700;color:var(--primary-dark);font-size:0.9rem;">${label}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px;">${d.original_name || d.file_path.split('/').pop()}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);">Uploaded: ${d.uploaded_at}</div>
+          ${d.rejection_note ? `<div style="font-size:0.8rem;color:#991b1b;margin-top:4px;">⚠️ Note: ${d.rejection_note}</div>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span id="docstatus-${d.id}" style="padding:4px 10px;border-radius:99px;font-size:0.78rem;font-weight:700;background:${statusBg};color:${statusColor};">${statusText}</span>
+          <a href="/doc/${d.file_path}" target="_blank" class="btn btn-sm btn-outline" style="font-size:0.8rem;">👁 View</a>
+          <button onclick="verifyDoc('${d.id}','verify')" id="vbtn-${d.id}"
+            class="btn btn-sm btn-success" style="font-size:0.8rem;"
+            ${isVerified ? 'disabled' : ''}>✓ Verify</button>
+          <button onclick="openRejectDoc('${d.id}')" id="rbtn-${d.id}"
+            class="btn btn-sm btn-danger" style="font-size:0.8rem;"
+            ${isRejected ? 'disabled' : ''}>✗ Reject</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('docsModalContent').innerHTML = html;
+}
+
+function openRejectDoc(docId) {
+  _pendingRejectDocId = docId;
+  document.getElementById('rejectNoteInput').value = '';
+  document.getElementById('rejectNoteModal').style.display = 'flex';
+}
+
+async function confirmRejectDoc() {
+  const note = document.getElementById('rejectNoteInput').value.trim();
+  document.getElementById('rejectNoteModal').style.display = 'none';
+  await verifyDoc(_pendingRejectDocId, 'reject', note);
+}
+
+async function verifyDoc(docId, action, note = '') {
+  const vBtn = document.getElementById(`vbtn-${docId}`);
+  const rBtn = document.getElementById(`rbtn-${docId}`);
+  if (vBtn) { vBtn.disabled = true; vBtn.innerHTML = '<span class="loader"></span>'; }
+  if (rBtn) rBtn.disabled = true;
+  try {
+    const res  = await fetch('/hospital/verify-document', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doc_id: docId, action, note })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, action === 'verify' ? 'success' : 'error');
+      updateScoreDisplay(data.new_score);
+      const s = document.getElementById(`docstatus-${docId}`);
+      if (s) {
+        if (data.is_verified) {
+          s.textContent = '✅ Verified'; s.style.background = '#dcfce7'; s.style.color = '#15803d';
+          if (vBtn) { vBtn.disabled = true; vBtn.innerHTML = '✓ Verify'; }
+          if (rBtn) { rBtn.disabled = false; }
+        } else {
+          s.textContent = '❌ Invalid'; s.style.background = '#fee2e2'; s.style.color = '#991b1b';
+          if (vBtn) { vBtn.disabled = false; vBtn.innerHTML = '✓ Verify'; }
+          if (rBtn) { rBtn.disabled = true; }
+        }
+      }
+    } else {
+      showToast(data.message || 'Failed.', 'error');
+      if (vBtn) { vBtn.disabled = false; vBtn.innerHTML = '✓ Verify'; }
+      if (rBtn) rBtn.disabled = false;
+    }
+  } catch(e) {
+    showToast('An error occurred.', 'error');
+    if (vBtn) { vBtn.disabled = false; vBtn.innerHTML = '✓ Verify'; }
+    if (rBtn) rBtn.disabled = false;
+  }
+}
+
+async function verifyCase(caseId, action) {
+  const vBtn  = document.getElementById(`verify-${caseId}`);
+  const rBtn  = document.getElementById(`reject-${caseId}`);
+  const alert = document.getElementById('alertBox');
+  if (vBtn) { vBtn.disabled = true; vBtn.innerHTML = '<span class="loader"></span>'; }
+  if (rBtn) rBtn.disabled = true;
+  try {
+    const res  = await fetch('/hospital/verify-case', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ case_id: caseId, action })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, action === 'verify' ? 'success' : 'error');
+      alert.innerHTML = `<div class="alert alert-${action==='verify'?'success':'danger'}">${data.message} Refreshing...</div>`;
+      const row = document.getElementById(`row-${caseId}`);
+      if (row) { row.style.opacity = '0.5'; if (vBtn) vBtn.innerHTML = action==='verify' ? '✅ Verified' : '❌ Rejected'; }
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      showToast(data.message || 'Action failed.', 'error');
+      if (vBtn) { vBtn.disabled = false; vBtn.innerHTML = '✓ Verify'; }
+      if (rBtn) rBtn.disabled = false;
+    }
+  } catch(e) {
+    showToast('An error occurred.', 'error');
+    if (vBtn) { vBtn.disabled = false; vBtn.innerHTML = '✓ Verify'; }
+    if (rBtn) rBtn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

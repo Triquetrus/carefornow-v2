@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Access Denied{% endblock %}
+{% block content %}
+<div style="min-height:70vh;display:flex;align-items:center;justify-content:center;">
+  <div style="text-align:center;padding:40px 20px;">
+    <div style="font-size:80px;margin-bottom:16px;">🔒</div>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.5rem;color:var(--primary-dark);margin-bottom:8px;">Access Denied</h1>
+    <p style="color:var(--text-muted);max-width:380px;margin:0 auto 12px;">You don't have permission to view this page. This area is restricted to a specific user role.</p>
+    <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:28px;">You are logged in as: <strong>{{ session.get('user_type', 'unknown') | title }}</strong></p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a href="{{ url_for('index') }}" class="btn btn-primary">← Go Home</a>
+      <a href="{{ url_for('logout') }}" class="btn btn-outline">Switch Account</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Server Error{% endblock %}
+{% block content %}
+<div style="min-height:70vh;display:flex;align-items:center;justify-content:center;">
+  <div style="text-align:center;padding:40px 20px;">
+    <div style="font-size:80px;margin-bottom:16px;">⚠️</div>
+    <h1 style="font-family:'Playfair Display',serif;font-size:3rem;color:var(--primary-dark);margin-bottom:8px;">500</h1>
+    <h2 style="font-size:1.3rem;color:var(--text);margin-bottom:12px;">Something Went Wrong</h2>
+    <p style="color:var(--text-muted);max-width:380px;margin:0 auto 28px;">
+      Our server encountered an error. Please try again in a moment.
+    </p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">← Go Home</a>
+  </div>
+</div>
+{% endblock %}

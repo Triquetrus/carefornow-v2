@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-tag">🚨 Emergency Medical Help</div>
+    <h1>When every minute counts,<br><span class="highlight">funding shouldn't wait.</span></h1>
+    <p>CareForNow connects patients and families with NGOs, government schemes, CSR funds, and insurance providers — instantly, during medical emergencies.</p>
+    <div class="hero-actions">
+      <a href="{{ url_for('register') }}" class="btn btn-white btn-lg">🆘 Get Help Now</a>
+      <a href="#how-it-works" class="btn btn-ghost btn-lg">How It Works</a>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST STRIP -->
+<div style="background:#fff;border-bottom:1px solid var(--border);padding:18px 0;">
+  <div class="container">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:32px;color:var(--text-muted);font-size:0.88rem;font-weight:700;">
+      <span>🏛️ Govt. Schemes Integrated</span>
+      <span>🤝 NGO Network</span>
+      <span>💼 CSR Funds</span>
+      <span>📋 Insurance Partners</span>
+      <span>🔒 Secure & Free</span>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<section class="section" style="padding-top:48px;padding-bottom:0;">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-card" style="border-left:4px solid var(--primary);">
+        <div class="stat-icon" style="background:#d1fae5;">🏥</div>
+        <div class="stat-value">4+</div>
+        <div class="stat-label">Funding Sources</div>
+      </div>
+      <div class="stat-card" style="border-left:4px solid var(--accent);">
+        <div class="stat-icon" style="background:#ffedd5;">⚡</div>
+        <div class="stat-value">24/7</div>
+        <div class="stat-label">Always Available</div>
+      </div>
+      <div class="stat-card" style="border-left:4px solid var(--info);">
+        <div class="stat-icon" style="background:#dbeafe;">💰</div>
+        <div class="stat-value">₹0</div>
+        <div class="stat-label">Cost to Families</div>
+      </div>
+      <div class="stat-card" style="border-left:4px solid var(--success);">
+        <div class="stat-icon" style="background:#dcfce7;">🎯</div>
+        <div class="stat-value">Smart</div>
+        <div class="stat-label">AI Matching</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how-it-works">
+  <div class="container">
+    <div class="text-center mb-4">
+      <div style="display:inline-block;background:#d1fae5;color:var(--primary-dark);padding:5px 14px;border-radius:99px;font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Simple Process</div>
+      <h2 class="page-title" style="font-size:1.9rem;">Get help in 4 easy steps</h2>
+      <p style="color:var(--text-muted);max-width:500px;margin:0 auto;">Our guided process makes it easy even during the most stressful moments</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:32px;">
+      <div style="text-align:center;padding:28px 20px;">
+        <div style="width:60px;height:60px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;margin:0 auto 16px;">1</div>
+        <h3 style="font-weight:800;margin-bottom:8px;color:var(--primary-dark);">Register</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;">Create a free account for yourself or as a patient's family member</p>
+      </div>
+      <div style="text-align:center;padding:28px 20px;">
+        <div style="width:60px;height:60px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;margin:0 auto 16px;">2</div>
+        <h3 style="font-weight:800;margin-bottom:8px;color:var(--primary-dark);">Submit Case</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;">Enter patient details, illness, hospital, and estimated treatment cost</p>
+      </div>
+      <div style="text-align:center;padding:28px 20px;">
+        <div style="width:60px;height:60px;background:var(--info);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;margin:0 auto 16px;">3</div>
+        <h3 style="font-weight:800;margin-bottom:8px;color:var(--primary-dark);">Get Matched</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;">Our system automatically finds the best funding sources for your case</p>
+      </div>
+      <div style="text-align:center;padding:28px 20px;">
+        <div style="width:60px;height:60px;background:var(--success);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;margin:0 auto 16px;">4</div>
+        <h3 style="font-weight:800;margin-bottom:8px;color:var(--primary-dark);">Track & Receive</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;">Apply to funding sources and track your application status in real-time</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" style="background:#fff;border-top:1px solid var(--border);">
+  <div class="container">
+    <div class="text-center mb-4">
+      <div style="display:inline-block;background:#ffedd5;color:#c2410c;padding:5px 14px;border-radius:99px;font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Platform Features</div>
+      <h2 class="page-title" style="font-size:1.9rem;">Everything you need in a crisis</h2>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon green">📝</div>
+        <div class="feature-title">Emergency Case Registration</div>
+        <div class="feature-desc">Quick, guided form to submit all case details — patient info, illness, hospital, cost — in minutes.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon orange">🎯</div>
+        <div class="feature-title">Smart Funding Matching</div>
+        <div class="feature-desc">AI-powered matching based on illness type, urgency, location, and eligibility for best results.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon blue">🗺️</div>
+        <div class="feature-title">Nearby Support Finder</div>
+        <div class="feature-desc">Discover NGOs, government offices, and CSR teams near your hospital location.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon purple">📊</div>
+        <div class="feature-title">Live Status Tracking</div>
+        <div class="feature-desc">Track every application in real-time — approvals, pending docs, or rejections with reasons.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon red">🏥</div>
+        <div class="feature-title">Funder Dashboard</div>
+        <div class="feature-desc">NGOs and CSR teams get a clean dashboard to review, approve or reject cases quickly.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon yellow">🔔</div>
+        <div class="feature-title">Step-by-Step Guidance</div>
+        <div class="feature-desc">Clear instructions at every step so families under stress always know what to do next.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHO IS IT FOR -->
+<section class="section">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2 class="page-title" style="font-size:1.9rem;">Who uses CareForNow?</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;">
+      {% set users = [
+        ('👨‍👩‍👧', 'Patients & Families', 'Get financial support during medical emergencies without any cost.'),
+        ('🏥', 'Hospital Staff', 'Help patients access funding so treatment is never delayed.'),
+        ('🤝', 'NGOs & Trusts', 'Review verified cases and disburse funds where needed most.'),
+        ('🏢', 'CSR Teams', 'Easily find and fund verified emergency medical cases.'),
+        ('🏛️', 'Govt. Agencies', 'Connect citizens to relevant government health schemes.'),
+      ] %}
+      {% for icon, title, desc in users %}
+      <div class="card" style="padding:24px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:10px;">{{ icon }}</div>
+        <h4 style="font-weight:800;color:var(--primary-dark);margin-bottom:6px;">{{ title }}</h4>
+        <p style="font-size:0.85rem;color:var(--text-muted);">{{ desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section style="background:linear-gradient(135deg,var(--primary-dark),var(--primary));padding:60px 0;text-align:center;color:#fff;">
+  <div class="container">
+    <h2 style="font-family:'Playfair Display',serif;font-size:2rem;margin-bottom:12px;">Ready to get started?</h2>
+    <p style="opacity:0.85;max-width:440px;margin:0 auto 28px;">Register for free and get matched with funding sources in minutes.</p>
+    <a href="{{ url_for('register') }}" class="btn btn-lg" style="background:#fff;color:var(--primary-dark);">🆘 Get Help Now — It's Free</a>
+  </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+{% block title %}Funder Dashboard{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#134f42,#1a6b5a);padding:36px 0 60px;color:#fff;margin-bottom:-32px;">
+  <div class="container">
+    <div class="d-flex align-center justify-between flex-wrap gap-2">
+      <div>
+        <div style="background:rgba(255,255,255,0.15);padding:4px 12px;border-radius:99px;font-size:0.78rem;font-weight:700;text-transform:uppercase;display:inline-block;margin-bottom:10px;">💼 Funding Organisation Portal</div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;">
+          {% if profile %}{{ profile.organization_name }}{% else %}Welcome, {{ session.get('name','Funder') }}{% endif %}
+        </h1>
+        <p style="opacity:0.85;margin-top:6px;">
+          {% if profile %}{{ profile.location or '' }}{% if profile.location %} · {% endif %}Logged in as {{ session.get('name', session.get('email','')) }}{% else %}Set up your profile to start allocating funds{% endif %}
+        </p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('funder_setup_profile') }}" class="btn" style="background:rgba(255,255,255,0.15);color:#fff;border:2px solid rgba(255,255,255,0.3);">⚙️ Profile</a>
+        <a href="{{ url_for('logout') }}"               class="btn" style="background:rgba(255,255,255,0.15);color:#fff;border:2px solid rgba(255,255,255,0.3);">Logout</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container" style="padding-top:0;padding-bottom:48px;">
+
+  {% if not profile %}
+  <div class="card" style="margin-top:40px;max-width:560px;margin-left:auto;margin-right:auto;">
+    <div class="card-body" style="text-align:center;padding:48px 32px;">
+      <div style="font-size:3rem;margin-bottom:16px;">🏢</div>
+      <h3 style="font-weight:800;color:var(--primary-dark);">Complete Your Organization Profile</h3>
+      <p style="color:var(--text-muted);margin-bottom:24px;">Set up your org name before adding funds or allocating to cases.</p>
+      <a href="{{ url_for('funder_setup_profile') }}" class="btn btn-primary btn-lg">Set Up Profile →</a>
+    </div>
+  </div>
+
+  {% else %}
+
+  <!-- STATS -->
+  <div class="stats-grid mb-4" style="margin-bottom:28px;">
+    <div class="stat-card" style="border-left:4px solid var(--primary);">
+      <div class="stat-icon" style="background:#d1fae5;">💰</div>
+      <div class="stat-value" id="statTotal">₹{{ "{:,}".format(profile.total_funds) }}</div>
+      <div class="stat-label">Total Funds Added</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--success);">
+      <div class="stat-icon" style="background:#d1fae5;">🏦</div>
+      <div class="stat-value" id="statRemaining">₹{{ "{:,}".format(profile.remaining_funds) }}</div>
+      <div class="stat-label">Remaining Funds</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--accent);">
+      <div class="stat-icon" style="background:#ffedd5;">📤</div>
+      <div class="stat-value">₹{{ "{:,}".format(profile.total_funds - profile.remaining_funds) }}</div>
+      <div class="stat-label">Allocated</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--danger);">
+      <div class="stat-icon" style="background:#fee2e2;">📨</div>
+      <div class="stat-value">{{ my_applications | length }}</div>
+      <div class="stat-label">Pending Applications</div>
+    </div>
+  </div>
+
+  <div id="alertBox" class="mb-3"></div>
+
+  <!-- ADD FUNDS -->
+  <div class="card mb-4" style="margin-bottom:24px;">
+    <div class="card-header">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:var(--primary-dark);">➕ Add Funds to Pool</h3>
+        <span class="badge badge-success">Balance: <span id="badgeRemaining">₹{{ "{:,}".format(profile.remaining_funds) }}</span></span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="d-flex gap-2 flex-wrap align-center">
+        <input type="number" id="addFundAmount" class="form-control" placeholder="Enter amount in ₹" min="1" style="flex:1;min-width:200px;">
+        <button onclick="addFunds()" class="btn btn-primary" id="addFundBtn">Add Funds</button>
+      </div>
+      <div class="d-flex gap-2 mt-2 flex-wrap">
+        <button onclick="setAmount(50000)"  class="btn btn-sm btn-outline">₹50,000</button>
+        <button onclick="setAmount(100000)" class="btn btn-sm btn-outline">₹1,00,000</button>
+        <button onclick="setAmount(250000)" class="btn btn-sm btn-outline">₹2,50,000</button>
+        <button onclick="setAmount(500000)" class="btn btn-sm btn-outline">₹5,00,000</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- [FIX 1.2] APPLICATIONS SENT TO THIS FUNDER — primary action area -->
+  <div class="card mb-4" style="margin-bottom:24px;">
+    <div class="card-header">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:var(--primary-dark);">📨 Funding Requests</h3>
+        <span class="badge badge-warning">{{ my_applications | length }} pending</span>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-top:4px;">
+        Families who have applied to your organisation for help. Review each case and allocate funds to approve.
+      </p>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+      {% if my_applications %}
+      <table class="table">
+        <thead>
+          <tr><th>Patient / Case</th><th>Condition</th><th>Funding Need</th><th>Urgency</th><th>Applied On</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for app in my_applications %}
+          {% set case = cases_map.get(app.case_id) %}
+          {% set already_given = funder_given_map.get(case.id, 0) if case else 0 %}
+          <tr id="approw-{{ app.id }}">
+            <td>
+              {% if case %}
+              <div style="font-weight:700;">{{ case.patient_name }}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">{{ case.age }}y · {{ case.gender }}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">{{ case.hospital_name }}</div>
+              {% if case.is_verified %}
+              <span class="badge badge-success" style="margin-top:4px;display:inline-block;">✅ Verified</span>
+              {% endif %}
+              {% if case.credibility_score %}
+              {% set score = case.credibility_score %}
+              <span class="badge {% if score >= 80 %}badge-success{% elif score >= 50 %}badge-info{% else %}badge-warning{% endif %}"
+                    style="margin-top:4px;display:inline-block;"
+                    title="Credibility score based on hospital-verified documents">
+                ⭐ Score: {{ score }}/100
+              </span>
+              {% endif %}
+              {% if app.status == 'approved' %}
+              <span class="badge badge-info" style="margin-top:4px;display:inline-block;">💸 Installments Active</span>
+              {% endif %}
+              {% else %}
+              <span style="font-size:0.85rem;color:var(--text-muted);">{{ app.case_id }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if case %}<span class="badge badge-accent">{{ case.illness_type }}</span>{% endif %}
+            </td>
+            <td>
+              {% if case %}
+              <div style="font-weight:700;color:var(--primary-dark);">₹{{ "{:,}".format(case.estimated_cost) }}</div>
+              <div style="font-size:0.78rem;color:var(--success);">Still needs: ₹{{ "{:,}".format(case.amount_remaining) }}</div>
+              {% if already_given > 0 %}
+              <div style="font-size:0.75rem;color:var(--primary);margin-top:2px;">Your total: ₹{{ "{:,}".format(already_given) }}</div>
+              {% endif %}
+              {% set pct = ((case.amount_received or 0) / case.estimated_cost * 100)|int if case.estimated_cost else 0 %}
+              <div style="background:#e5e7eb;border-radius:99px;height:5px;overflow:hidden;margin-top:4px;width:100px;">
+                <div style="background:var(--primary);width:{{ pct }}%;height:100%;border-radius:99px;"></div>
+              </div>
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-top:1px;">{{ pct }}% total funded</div>
+              {% endif %}
+            </td>
+            <td>
+              {% if case %}
+                {% if case.urgency == 1 %}<span class="badge badge-danger">🚨 Critical</span>
+                {% elif case.urgency == 2 %}<span class="badge badge-warning">⚠️ High</span>
+                {% else %}<span class="badge badge-info">🟡 Medium</span>{% endif %}
+              {% endif %}
+            </td>
+            <td style="font-size:0.82rem;color:var(--text-muted);">{{ app.created_at.strftime('%d %b %Y') if app.created_at else '' }}</td>
+            <td>
+              {% if case and case.status not in ('closed', 'fully_funded', 'funded', 'rejected') %}
+              <div class="d-flex gap-1 flex-wrap">
+                <button
+                  onclick="openApproveModal('{{ app.id }}', '{{ case.patient_name | replace("'", "\\'") }}', {{ case.estimated_cost }}, {{ case.amount_received or 0 }}, {{ already_given }})"
+                  class="btn btn-sm btn-success"
+                  id="approve-{{ app.id }}">
+                  {% if app.status == 'approved' %}💸 Add Installment{% else %}✓ Approve & Allocate{% endif %}
+                </button>
+                {% if app.status != 'approved' %}
+                <button
+                  onclick="openRejectModal('{{ app.id }}')"
+                  class="btn btn-sm btn-danger"
+                  id="reject-{{ app.id }}">✗ Reject</button>
+                {% endif %}
+              </div>
+              {% else %}
+              <span class="badge" style="background:#f3f4f6;color:#6b7280;">
+                {% if case %}{{ case.display_status }}{% else %}N/A{% endif %}
+              </span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state" style="padding:40px;">
+        <div class="empty-icon">📭</div>
+        <h3>No pending requests</h3>
+        <p>When families apply to your organisation, their requests will appear here for your review.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- FUNDING HISTORY -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">📊 Funding History</h3>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+      {% if allocations %}
+      <table class="table">
+        <thead>
+          <tr><th>Date</th><th>Patient / Case</th><th>Condition</th><th>Amount Allocated</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+          {% for alloc in allocations %}
+          <tr>
+            <td style="font-size:0.85rem;color:var(--text-muted);">{{ alloc.allocated_at.strftime('%d %b %Y') if alloc.allocated_at else '' }}</td>
+            <td>
+              {% if alloc.case %}
+              <div style="font-weight:700;">{{ alloc.case.patient_name }}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">{{ alloc.case_id }}</div>
+              {% else %}<span style="font-size:0.85rem;color:var(--text-muted);">{{ alloc.case_id }}</span>{% endif %}
+            </td>
+            <td>{% if alloc.case %}<span class="badge badge-accent">{{ alloc.case.illness_type }}</span>{% endif %}</td>
+            <td style="font-weight:800;color:var(--success);font-size:1.05rem;">₹{{ "{:,}".format(alloc.amount) }}</td>
+            <td style="font-size:0.85rem;color:var(--text-muted);">{{ alloc.note or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state" style="padding:30px;">
+        <div class="empty-icon">📊</div>
+        <h3>No allocations yet</h3>
+        <p>Your funding history will appear here once you approve requests.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% endif %}{# end profile #}
+</div>
+
+<!-- [FIX 1.3] APPROVE + ALLOCATE MODAL (unified) -->
+<div id="approveModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:var(--radius-lg);padding:32px;max-width:480px;width:90%;box-shadow:var(--shadow-lg);">
+    <div class="d-flex align-center justify-between mb-3">
+      <h3 style="font-weight:800;color:var(--primary-dark);" id="approveModalTitle">✓ Approve & Allocate Funds</h3>
+      <button onclick="closeModal('approveModal')" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-muted);">✕</button>
+    </div>
+    <div id="approveInfo" class="mb-3"></div>
+    <div class="form-group">
+      <label class="form-label">Amount to Allocate (₹) *</label>
+      <input type="number" id="approveAmount" class="form-control" placeholder="Enter amount" min="1">
+      <p class="form-hint">Your balance: <strong id="availableBalance"></strong></p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note (optional)</label>
+      <textarea id="approveNote" class="form-control" rows="2" placeholder="Any remarks for the family..."></textarea>
+    </div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:0.85rem;color:#15803d;">
+      ✅ Approving will immediately transfer the specified amount to this case.
+    </div>
+    <div class="d-flex gap-2 mt-3">
+      <button onclick="submitApproveAllocation()" class="btn btn-success" style="flex:1;" id="approveBtn">✓ Confirm Approval</button>
+      <button onclick="closeModal('approveModal')" class="btn btn-outline">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- REJECT MODAL -->
+<div id="rejectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:var(--radius-lg);padding:32px;max-width:480px;width:90%;box-shadow:var(--shadow-lg);">
+    <div class="d-flex align-center justify-between mb-3">
+      <h3 style="font-weight:800;color:var(--primary-dark);">Reject Application</h3>
+      <button onclick="closeModal('rejectModal')" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-muted);">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reason (optional)</label>
+      <textarea id="rejectNote" class="form-control" rows="3" placeholder="Reason for rejection..."></textarea>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+      <button onclick="confirmReject()" class="btn btn-danger" style="flex:1;">✗ Confirm Reject</button>
+      <button onclick="closeModal('rejectModal')" class="btn btn-outline">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let activeAppId    = null;
+let remainingFunds = {{ profile.remaining_funds if profile else 0 }};
+const funderGivenMap = {{ funder_given_map | tojson }};
+
+function setAmount(v) { document.getElementById('addFundAmount').value = v; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+// ---- Add Funds ----
+async function addFunds() {
+  const amount = parseInt(document.getElementById('addFundAmount').value);
+  const btn    = document.getElementById('addFundBtn');
+  const alert  = document.getElementById('alertBox');
+  if (!amount || amount <= 0) { alert.innerHTML='<div class="alert alert-danger">Enter a valid amount.</div>'; return; }
+  btn.disabled=true; btn.innerHTML='<span class="loader"></span>';
+  try {
+    const res  = await fetch('/funder/add-funds',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({amount}) });
+    const data = await res.json();
+    if (data.success) {
+      remainingFunds = data.remaining_funds;
+      document.getElementById('statTotal').textContent     = '₹'+data.total_funds.toLocaleString('en-IN');
+      document.getElementById('statRemaining').textContent = '₹'+data.remaining_funds.toLocaleString('en-IN');
+      document.getElementById('badgeRemaining').textContent= '₹'+data.remaining_funds.toLocaleString('en-IN');
+      document.getElementById('addFundAmount').value = '';
+      showToast('Funds added!','success');
+      alert.innerHTML = '<div class="alert alert-success">✅ Funds added successfully.</div>';
+    } else {
+      alert.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+    }
+  } catch(e) { alert.innerHTML='<div class="alert alert-danger">Error occurred.</div>'; }
+  btn.disabled=false; btn.innerHTML='Add Funds';
+}
+
+// ---- [FIX 1.3] Approve + Allocate modal ----
+function openApproveModal(appId, patientName, total, received, alreadyGiven) {
+  activeAppId = appId;
+  const needed = total - received;
+  const myGiven = alreadyGiven || 0;
+  document.getElementById('approveInfo').innerHTML = `
+    <div style="background:var(--bg);padding:14px;border-radius:var(--radius-sm);">
+      <div style="font-weight:700;margin-bottom:8px;">${patientName}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr ${myGiven > 0 ? '1fr' : ''};gap:8px;font-size:0.85rem;">
+        <div><div style="color:var(--text-muted);font-size:0.75rem;">Required</div><strong>₹${total.toLocaleString('en-IN')}</strong></div>
+        <div><div style="color:var(--text-muted);font-size:0.75rem;">Total Received</div><strong style="color:var(--success);">₹${received.toLocaleString('en-IN')}</strong></div>
+        <div><div style="color:var(--text-muted);font-size:0.75rem;">Still Needed</div><strong style="color:var(--accent);">₹${needed.toLocaleString('en-IN')}</strong></div>
+        ${myGiven > 0 ? `<div><div style="color:var(--text-muted);font-size:0.75rem;">Your Total</div><strong style="color:var(--primary);">₹${myGiven.toLocaleString('en-IN')}</strong></div>` : ''}
+      </div>
+    </div>`;
+  document.getElementById('availableBalance').textContent = '₹'+remainingFunds.toLocaleString('en-IN');
+  document.getElementById('approveAmount').max   = Math.min(needed, remainingFunds);
+  document.getElementById('approveAmount').value = '';
+  document.getElementById('approveNote').value   = '';
+  const isInstallment = myGiven > 0;
+  document.getElementById('approveModalTitle').textContent = isInstallment ? '💸 Add Installment' : '✓ Approve & Allocate Funds';
+  document.getElementById('approveBtn').textContent = isInstallment ? '💸 Send Installment' : '✓ Confirm Approval';
+  document.getElementById('approveModal').style.display = 'flex';
+}
+
+async function submitApproveAllocation() {
+  const amount = parseInt(document.getElementById('approveAmount').value);
+  const note   = document.getElementById('approveNote').value;
+  const btn    = document.getElementById('approveBtn');
+  const alert  = document.getElementById('alertBox');
+  if (!amount || amount <= 0) { showToast('Enter a valid amount.','error'); return; }
+  btn.disabled=true; btn.innerHTML='<span class="loader"></span> Processing...';
+  try {
+    const res  = await fetch('/funder/allocate-from-application',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ application_id: activeAppId, amount, note })
+    });
+    const data = await res.json();
+    closeModal('approveModal');
+    if (data.success) {
+      remainingFunds = data.remaining_funds;
+      document.getElementById('statRemaining').textContent  = '₹'+data.remaining_funds.toLocaleString('en-IN');
+      document.getElementById('badgeRemaining').textContent = '₹'+data.remaining_funds.toLocaleString('en-IN');
+      showToast('✅ '+data.message,'success');
+      alert.innerHTML = `<div class="alert alert-success">✅ ${data.message} Refreshing...</div>`;
+      setTimeout(()=>location.reload(), 1500);
+    } else {
+      showToast(data.message,'error');
+      alert.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+    }
+  } catch(e) { showToast('Error occurred.','error'); }
+  btn.disabled=false; btn.innerHTML='✓ Confirm Approval';
+}
+
+// ---- Reject ----
+function openRejectModal(appId) {
+  activeAppId = appId;
+  document.getElementById('rejectNote').value = '';
+  document.getElementById('rejectModal').style.display = 'flex';
+}
+
+async function confirmReject() {
+  const note = document.getElementById('rejectNote').value;
+  closeModal('rejectModal');
+  const rBtn = document.getElementById(`reject-${activeAppId}`);
+  const aBtn = document.getElementById(`approve-${activeAppId}`);
+  if(rBtn){rBtn.disabled=true; rBtn.innerHTML='<span class="loader"></span>';}
+  try {
+    const res  = await fetch('/funder/respond',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ application_id: activeAppId, action:'reject', note })
+    });
+    const data = await res.json();
+    if(data.success) {
+      showToast('Application rejected.','error');
+      const row = document.getElementById(`approw-${activeAppId}`);
+      if(row) row.style.opacity='0.4';
+      if(rBtn) rBtn.innerHTML='❌ Rejected';
+      if(aBtn) aBtn.disabled=true;
+    } else {
+      showToast(data.message||'Failed.','error');
+      if(rBtn){rBtn.disabled=false; rBtn.innerHTML='✗ Reject';}
+    }
+  } catch(e) { showToast('Error.','error'); if(rBtn){rBtn.disabled=false; rBtn.innerHTML='✗ Reject';} }
+}
+
+const approveModal = document.getElementById('approveModal');
+const rejectModal  = document.getElementById('rejectModal');
+if (approveModal) approveModal.addEventListener('click', function(e){ if(e.target===this) closeModal('approveModal'); });
+if (rejectModal)  rejectModal.addEventListener('click',  function(e){ if(e.target===this) closeModal('rejectModal');  });
+</script>
+{% endblock %}

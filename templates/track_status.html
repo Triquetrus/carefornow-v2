@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% block title %}Track Status{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,var(--primary-dark),var(--primary));padding:36px 0;color:#fff;">
+  <div class="container">
+    <a href="{{ url_for('dashboard') }}" style="color:rgba(255,255,255,0.75);text-decoration:none;font-size:0.85rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;">← Back to Dashboard</a>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;">📊 Case Detail & Status</h1>
+    <p style="opacity:0.85;margin-top:6px;">Case: <strong>{{ case.patient_name }}</strong> — {{ case.illness_type }}</p>
+  </div>
+</div>
+
+<div class="container-md" style="padding-top:32px;padding-bottom:48px;">
+
+  <div id="alertBox" class="mb-3"></div>
+
+  <!-- CASE SUMMARY CARD -->
+  <div class="card mb-4" style="margin-bottom:24px;">
+    <div class="card-body">
+      <div class="d-flex align-center justify-between flex-wrap gap-3">
+        <div class="d-flex align-center gap-2">
+          <div class="case-avatar" style="width:52px;height:52px;font-size:1.3rem;">
+            {{ case.patient_name[0].upper() if case.patient_name else '?' }}
+          </div>
+          <div>
+            <h3 style="font-weight:800;color:var(--primary-dark);">{{ case.patient_name }}</h3>
+            <p style="font-size:0.85rem;color:var(--text-muted);">{{ case.illness_type }} · {{ case.hospital_name }}</p>
+            {% if case.hospital_location %}
+            <p style="font-size:0.82rem;color:var(--text-muted);">📍 {{ case.hospital_location }}</p>
+            {% endif %}
+            <p style="font-size:0.78rem;color:var(--text-muted);">Case ID: <code>{{ case.id }}</code> · Submitted {{ case.created_at.strftime('%d %b %Y') if case.created_at else '' }}</p>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <span style="font-size:0.78rem;color:var(--text-muted);font-weight:700;display:block;margin-bottom:6px;">CASE STATUS</span>
+          {% if case.status == 'submitted' %}
+            <span class="badge badge-warning" style="font-size:0.9rem;padding:6px 14px;">⏳ Pending Verification</span>
+          {% elif case.status == 'verified' %}
+            <span class="badge badge-info" style="font-size:0.9rem;padding:6px 14px;">✅ Verified</span>
+          {% elif case.status == 'partially_funded' %}
+            <span class="badge badge-accent" style="font-size:0.9rem;padding:6px 14px;">💸 Partially Funded</span>
+          {% elif case.status in ('fully_funded', 'funded') %}
+            <span class="badge badge-success" style="font-size:0.9rem;padding:6px 14px;">💰 Fully Funded</span>
+          {% elif case.status == 'closed' %}
+            <span class="badge" style="background:#f3f4f6;color:#6b7280;font-size:0.9rem;padding:6px 14px;">🔒 Closed</span>
+          {% elif case.status == 'rejected' %}
+            <span class="badge badge-danger" style="font-size:0.9rem;padding:6px 14px;">❌ Rejected</span>
+          {% else %}
+            <span class="badge badge-primary" style="font-size:0.9rem;padding:6px 14px;">{{ case.display_status }}</span>
+          {% endif %}
+
+          {% if case.status not in ('closed', 'rejected', 'fully_funded', 'funded') %}
+          <div style="margin-top:10px;">
+            <button onclick="closeCase('{{ case.id }}')" class="btn btn-sm btn-outline" style="color:var(--text-muted);">
+              🔒 Close Case
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FUNDING AMOUNTS -->
+  {% set required = case.estimated_cost or 0 %}
+  {% set received = case.amount_received or 0 %}
+  {% set remaining = case.amount_remaining %}
+  {% set pct = ((received / required * 100) | int) if required > 0 else 0 %}
+
+  <div class="card mb-4" style="margin-bottom:24px;">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">💰 Funding Summary</h3>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:16px;margin-bottom:20px;">
+        <div style="text-align:center;padding:16px;background:var(--bg);border-radius:var(--radius-sm);">
+          <div style="font-size:1.5rem;font-weight:800;color:var(--primary-dark);">₹{{ "{:,}".format(required) }}</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">Amount Required</div>
+        </div>
+        <div style="text-align:center;padding:16px;background:var(--bg);border-radius:var(--radius-sm);">
+          <div style="font-size:1.5rem;font-weight:800;color:var(--success);">₹{{ "{:,}".format(received) }}</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">Amount Received</div>
+        </div>
+        <div style="text-align:center;padding:16px;background:var(--bg);border-radius:var(--radius-sm);">
+          <div style="font-size:1.5rem;font-weight:800;color:{% if remaining == 0 %}var(--success){% else %}var(--accent){% endif %};">₹{{ "{:,}".format(remaining) }}</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">Remaining</div>
+        </div>
+        <div style="text-align:center;padding:16px;background:var(--bg);border-radius:var(--radius-sm);">
+          <div style="font-size:1.5rem;font-weight:800;color:var(--primary);">{{ pct }}%</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">Funded</div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px;">
+          <span>₹{{ "{:,}".format(received) }} received</span>
+          <span>Goal: ₹{{ "{:,}".format(required) }}</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:99px;height:12px;overflow:hidden;">
+          <div style="background:{% if pct >= 100 %}var(--success){% elif pct > 0 %}var(--primary){% else %}var(--border){% endif %};width:{{ pct }}%;height:100%;border-radius:99px;transition:width 0.5s;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPLOADED DOCUMENTS -->
+  <div class="card mb-4" style="margin-bottom:24px;">
+    <div class="card-header">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:var(--primary-dark);">📁 Uploaded Documents</h3>
+        <span class="badge badge-primary">{{ documents | length }} file(s)</span>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if documents %}
+      <table class="table">
+        <thead>
+          <tr><th>Document Type</th><th>File Name</th><th>Uploaded</th><th>View</th></tr>
+        </thead>
+        <tbody>
+          {% for doc in documents %}
+          <tr>
+            <td>
+              {% if doc.doc_type == 'aadhaar' %}<span class="badge badge-primary">Aadhaar Card</span>
+              {% elif doc.doc_type == 'income_cert' %}<span class="badge badge-info">Income Certificate</span>
+              {% elif doc.doc_type == 'ration_card' %}<span class="badge badge-accent">Ration Card</span>
+              {% elif doc.doc_type == 'ews_cert' %}<span class="badge badge-success">EWS Certificate</span>
+              {% else %}<span class="badge badge-primary">{{ doc.doc_type | title }}</span>{% endif %}
+            </td>
+            <td style="font-size:0.85rem;">{{ doc.original_name or doc.file_path.split('/')[-1] }}</td>
+            <td style="font-size:0.82rem;color:var(--text-muted);">{{ doc.uploaded_at.strftime('%d %b %Y') if doc.uploaded_at else '' }}</td>
+            <td>
+              <a href="{{ url_for('serve_document', filepath=doc.file_path) }}" target="_blank" class="btn btn-sm btn-outline">View</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state" style="padding:24px;">
+        <p>No documents uploaded for this case.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- FUNDING HISTORY (allocations from funders) -->
+  {% if allocations %}
+  <div class="card mb-4" style="margin-bottom:24px;">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">📊 Funding History</h3>
+    </div>
+    <div class="card-body" style="padding:0;">
+      <table class="table">
+        <thead>
+          <tr><th>Date</th><th>Organization</th><th>Amount</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+          {% for alloc in allocations %}
+          {% set fp = alloc.funder_profile %}
+          <tr>
+            <td style="font-size:0.85rem;color:var(--text-muted);">{{ alloc.allocated_at.strftime('%d %b %Y') if alloc.allocated_at else '' }}</td>
+            <td style="font-weight:700;">{{ fp.organization_name if fp else '—' }}</td>
+            <td style="font-weight:800;color:var(--success);">₹{{ "{:,}".format(alloc.amount) }}</td>
+            <td style="font-size:0.85rem;color:var(--text-muted);">{{ alloc.note or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- CASE JOURNEY -->
+  <div class="card mb-4" style="margin-bottom:24px;">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">📍 Case Journey</h3>
+    </div>
+    <div class="card-body">
+      {% set is_verified   = case.verified_by is not none %}
+      {% set has_applied   = applications | length > 0 %}
+      {% set is_funded     = case.status in ('partially_funded','fully_funded','funded') %}
+      {% set is_fully_done = case.status in ('fully_funded','funded') %}
+      <div class="timeline">
+
+        <div class="timeline-item">
+          <div class="timeline-dot done">✓</div>
+          <div>
+            <div style="font-weight:700;">Case Submitted</div>
+            <div style="font-size:0.82rem;color:var(--text-muted);">{{ case.created_at.strftime('%d %b %Y, %I:%M %p') if case.created_at else 'N/A' }}</div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot {{ 'done' if is_verified else 'active' if case.status == 'submitted' else 'pending' }}">
+            {{ '✓' if is_verified else '…' if case.status == 'submitted' else '○' }}
+          </div>
+          <div>
+            <div style="font-weight:700;">Hospital Verification</div>
+            <div style="font-size:0.82rem;color:var(--text-muted);">
+              {% if is_verified %}Verified by hospital{% else %}Awaiting verification (optional but recommended){% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot {{ 'done' if has_applied else 'active' if is_verified else 'pending' }}">
+            {{ '✓' if has_applied else '…' if is_verified else '○' }}
+          </div>
+          <div>
+            <div style="font-weight:700;">Applied for Funding</div>
+            <div style="font-size:0.82rem;color:var(--text-muted);">
+              {% if has_applied %}Applied to {{ applications | length }} organisation{{ 's' if applications|length != 1 else '' }}{% else %}Apply to funding organisations{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot {{ 'done' if is_fully_done else 'active' if is_funded else 'pending' }}">
+            {{ '✓' if is_fully_done else '…' if is_funded else '○' }}
+          </div>
+          <div>
+            <div style="font-weight:700;">Funding Received</div>
+            <div style="font-size:0.82rem;color:var(--text-muted);">
+              {% if is_fully_done %}Fully funded ✅
+              {% elif is_funded %}₹{{ "{:,}".format(case.amount_received or 0) }} received so far
+              {% else %}Waiting for funder approval{% endif %}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATIONS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:var(--primary-dark);">Funding Applications</h3>
+        <span class="badge badge-primary">{{ applications | length }} applications</span>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if applications %}
+        {% for app in applications %}
+        <div style="padding:20px 24px;border-bottom:1px solid var(--border);">
+          <div class="d-flex align-center justify-between flex-wrap gap-2">
+            <div>
+              <div style="font-weight:800;color:var(--primary-dark);">{{ app.org_name or app.org_id }}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">App ID: {{ app.id }}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">Submitted: {{ app.created_at.strftime('%d %b %Y') if app.created_at else '' }}</div>
+              {% if app.note %}
+              <div style="font-size:0.85rem;color:var(--primary-dark);margin-top:4px;">💬 {{ app.note }}</div>
+              {% endif %}
+            </div>
+            {% if app.status == 'submitted' %}
+              <span class="badge badge-warning">⏳ Pending Review</span>
+            {% elif app.status == 'approved' %}
+              <span class="badge badge-success">✅ Approved</span>
+            {% elif app.status == 'rejected' %}
+              <span class="badge badge-danger">❌ Rejected</span>
+            {% else %}
+              <span class="badge badge-info">{{ app.status | title }}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">📤</div>
+          <h3>No applications yet</h3>
+          <p>Apply to funding sources for this case.</p>
+          <a href="{{ url_for('funding_options', case_id=case.id) }}" class="btn btn-primary">View Funding Options</a>
+        </div>
+      {% endif %}
+    </div>
+    {% if applications and case.status not in ('closed', 'fully_funded', 'funded') %}
+    <div class="card-footer">
+      <a href="{{ url_for('funding_options', case_id=case.id) }}" class="btn btn-outline btn-sm">+ Apply to More Sources</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function closeCase(caseId) {
+  if (!confirm('Close this case? It will no longer be visible to funders.')) return;
+  try {
+    const res  = await fetch(`/close-case/${caseId}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Case closed.', 'success');
+      setTimeout(() => location.reload(), 800);
+    } else {
+      showToast(data.message || 'Failed.', 'error');
+    }
+  } catch(e) {
+    showToast('An error occurred.', 'error');
+  }
+}
+</script>
+{% endblock %}

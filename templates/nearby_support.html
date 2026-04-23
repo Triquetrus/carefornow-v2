@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Find Funding Support{% endblock %}
+
+{% block head %}
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDijg-GJboVVevybvy_6-ENteRmTPXZ3Lg&callback=initFunderMap" async defer></script>
+<style>
+  #funderMap { width:100%; height:360px; border-radius:var(--radius); border:1px solid var(--border); }
+  #funderMap-placeholder { width:100%; height:260px; border-radius:var(--radius);
+    border:2px dashed var(--border); display:flex; flex-direction:column; align-items:center;
+    justify-content:center; background:var(--bg); color:var(--text-muted);
+    gap:8px; font-size:0.88rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,var(--primary-dark),var(--primary));padding:36px 0 60px;color:#fff;margin-bottom:-32px;">
+  <div class="container">
+    <h1 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;">📍 Find Funding Support</h1>
+    <p style="opacity:0.85;margin-top:6px;">Browse funding organizations registered on CareForNow</p>
+  </div>
+</div>
+
+<div class="container" style="padding-top:0;padding-bottom:48px;">
+
+  {% if db_funders %}
+
+  <!-- MAP SECTION -->
+  <div class="card" style="margin-top:24px;margin-bottom:24px;">
+    <div class="card-header">
+      <h3 style="font-weight:800;color:var(--primary-dark);">🗺️ Funder Locations</h3>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-top:4px;">Click a pin to see organization details.</p>
+    </div>
+    <div class="card-body" style="padding:16px;">
+      <div id="funderMap" style="display:none;"></div>
+      <div id="funderMap-placeholder">
+        <span style="font-size:2.5rem;">🗺️</span>
+        <span>Add your Google Maps API key to see funders on the map.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="card">
+    <div class="card-header">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:var(--primary-dark);">🏢 Registered Funding Organizations</h3>
+        <span class="badge badge-primary">{{ db_funders | length }} organizations</span>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-top:4px;">Sorted by available funds. These organizations actively fund emergency medical cases.</p>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+      <table class="table">
+        <thead>
+          <tr><th>#</th><th>Organization</th><th>Location</th><th>Available Funds</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for funder in db_funders %}
+          <tr id="frow-{{ loop.index }}">
+            <td style="font-size:0.82rem;color:var(--text-muted);">{{ loop.index }}</td>
+            <td>
+              <div style="font-weight:700;">{{ funder.organization_name }}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">ID: {{ funder.id }}</div>
+            </td>
+            <td>
+              {% if funder.location %}
+              <div style="font-size:0.88rem;">📍 {{ funder.location }}</div>
+              {% if funder.latitude and funder.longitude %}
+              <a href="https://maps.google.com/?q={{ funder.latitude }},{{ funder.longitude }}"
+                 target="_blank" style="font-size:0.75rem;color:var(--primary);">View on Google Maps ↗</a>
+              {% endif %}
+              {% else %}
+              <span style="color:var(--text-muted);font-size:0.85rem;">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if funder.remaining_funds > 0 %}
+              <span style="font-weight:700;color:var(--success);font-size:1rem;">₹{{ "{:,}".format(funder.remaining_funds) }}</span>
+              <div style="font-size:0.75rem;color:var(--text-muted);">of ₹{{ "{:,}".format(funder.total_funds) }} total</div>
+              {% else %}
+              <span style="color:var(--text-muted);">No funds currently</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if funder.remaining_funds > 0 %}
+              <span class="badge badge-success">✅ Active</span>
+              {% else %}
+              <span class="badge" style="background:#f3f4f6;color:#6b7280;">Inactive</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="card" style="margin-top:24px;">
+    <div class="card-body" style="text-align:center;padding:48px 24px;">
+      <div style="font-size:3rem;margin-bottom:16px;">🏢</div>
+      <h3 style="font-weight:800;color:var(--primary-dark);">No Funding Organizations Yet</h3>
+      <p style="color:var(--text-muted);margin-top:8px;">Funding organizations will appear here once they register and are approved by admin.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="alert alert-info" style="margin-top:24px;">
+    💡 <strong>Tip:</strong> Submit your case and apply directly from the Funding Options page. Organizations sorted by amount and proximity to your hospital.
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Funder data from server (only those with lat/lng)
+const funderData = [
+  {% for funder in db_funders %}
+  {% if funder.latitude and funder.longitude %}
+  {
+    name: {{ funder.organization_name | tojson }},
+    location: {{ (funder.location or '') | tojson }},
+    lat: {{ funder.latitude }},
+    lng: {{ funder.longitude }},
+    funds: {{ funder.remaining_funds }},
+    active: {{ 'true' if funder.remaining_funds > 0 else 'false' }}
+  },
+  {% endif %}
+  {% endfor %}
+];
+
+function initFunderMap() {
+  if (!funderData.length) return;  // no pins to show
+  document.getElementById('funderMap-placeholder').style.display = 'none';
+  document.getElementById('funderMap').style.display = 'block';
+
+  // Centre on average of all pins
+  const avgLat = funderData.reduce((s, f) => s + f.lat, 0) / funderData.length;
+  const avgLng = funderData.reduce((s, f) => s + f.lng, 0) / funderData.length;
+
+  const map = new google.maps.Map(document.getElementById('funderMap'), {
+    center: { lat: avgLat, lng: avgLng },
+    zoom: funderData.length === 1 ? 12 : 6,
+    mapTypeControl: false, streetViewControl: false,
+  });
+
+  const infoWindow = new google.maps.InfoWindow();
+
+  funderData.forEach(f => {
+    const marker = new google.maps.Marker({
+      position: { lat: f.lat, lng: f.lng },
+      map,
+      title: f.name,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: f.active ? '#16a34a' : '#9ca3af',
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 2,
+      }
+    });
+
+    marker.addListener('click', () => {
+      infoWindow.setContent(`
+        <div style="font-family:sans-serif;padding:4px 2px;min-width:180px;">
+          <div style="font-weight:700;font-size:0.95rem;margin-bottom:4px;">${f.name}</div>
+          <div style="font-size:0.82rem;color:#555;">📍 ${f.location || 'Location not specified'}</div>
+          <div style="margin-top:6px;font-weight:700;color:${f.active ? '#16a34a' : '#9ca3af'};">
+            ${f.active ? '✅ ₹' + f.funds.toLocaleString('en-IN') + ' available' : '❌ No funds currently'}
+          </div>
+        </div>
+      `);
+      infoWindow.open(map, marker);
+    });
+  });
+}
+</script>
+{% endblock %}

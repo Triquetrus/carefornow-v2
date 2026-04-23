@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#1e1b4b,#4338ca);padding:36px 0 60px;color:#fff;margin-bottom:-32px;">
+  <div class="container">
+    <div class="d-flex align-center justify-between flex-wrap gap-2">
+      <div>
+        <div style="background:rgba(255,255,255,0.15);padding:4px 12px;border-radius:99px;font-size:0.78rem;font-weight:700;text-transform:uppercase;display:inline-block;margin-bottom:10px;">⚙️ Admin Panel</div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;">System Administration</h1>
+        <p style="opacity:0.85;margin-top:6px;">Complete overview and control of the CareForNow platform</p>
+      </div>
+      <a href="{{ url_for('logout') }}" class="btn" style="background:rgba(255,255,255,0.15);color:#fff;border:2px solid rgba(255,255,255,0.3);">Logout</a>
+    </div>
+  </div>
+</div>
+
+<div class="container" style="padding-top:0;padding-bottom:48px;">
+
+  <!-- STATS -->
+  <div class="stats-grid mb-4" style="margin-bottom:28px;">
+    <div class="stat-card" style="border-left:4px solid #6366f1;">
+      <div class="stat-icon" style="background:#ede9fe;">👥</div>
+      <div class="stat-value">{{ stats.total_users }}</div>
+      <div class="stat-label">Total Users</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--primary);">
+      <div class="stat-icon" style="background:#d1fae5;">📋</div>
+      <div class="stat-value">{{ stats.total_cases }}</div>
+      <div class="stat-label">Total Cases</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--accent);">
+      <div class="stat-icon" style="background:#ffedd5;">⏳</div>
+      <div class="stat-value">{{ stats.submitted }}</div>
+      <div class="stat-label">Submitted</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--info);">
+      <div class="stat-icon" style="background:#dbeafe;">🔍</div>
+      <div class="stat-value">{{ stats.verified }}</div>
+      <div class="stat-label">Verified</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--success);">
+      <div class="stat-icon" style="background:#dcfce7;">💰</div>
+      <div class="stat-value">{{ stats.funded }}</div>
+      <div class="stat-label">Funded</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--danger);">
+      <div class="stat-icon" style="background:#fee2e2;">❌</div>
+      <div class="stat-value">{{ stats.rejected }}</div>
+      <div class="stat-label">Rejected</div>
+    </div>
+  </div>
+
+  <div id="alertBox" class="mb-3"></div>
+
+  <!-- PENDING FUNDER APPROVALS -->
+  {% if pending_funders %}
+  <div class="card mb-4" style="margin-bottom:24px;border-left:4px solid var(--accent);">
+    <div class="card-header" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:#92400e;">⏳ Pending Funder Approvals</h3>
+        <span class="badge badge-warning">{{ pending_funders | length }} awaiting</span>
+      </div>
+      <p style="color:#92400e;font-size:0.88rem;margin-top:4px;opacity:0.8;">These organizations registered and uploaded a verification document. Review and approve or reject.</p>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+      <table class="table">
+        <thead><tr><th>Organization</th><th>Location</th><th>User ID</th><th>Applied On</th><th>Verification Doc</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for fp in pending_funders %}
+          <tr id="funderrow-{{ fp.id }}">
+            <td>
+              <div style="font-weight:700;">{{ fp.organization_name }}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">Profile ID: {{ fp.id }}</div>
+            </td>
+            <td style="font-size:0.88rem;">{{ fp.location or '—' }}</td>
+            <td style="font-size:0.78rem;color:var(--text-muted);">{{ fp.user_id }}</td>
+            <td style="font-size:0.82rem;color:var(--text-muted);">{{ fp.created_at.strftime('%d %b %Y') if fp.created_at else '' }}</td>
+            <td>
+              {% if fp.verification_doc %}
+              <a href="{{ url_for('serve_document', filepath=fp.verification_doc) }}" target="_blank" class="btn btn-sm btn-outline">📄 View Doc</a>
+              {% else %}
+              <span style="color:var(--text-muted);font-size:0.82rem;">No doc uploaded</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                <button onclick="approveFunder('{{ fp.id }}')" class="btn btn-sm btn-success" id="approve-{{ fp.id }}">✓ Approve</button>
+                <button onclick="rejectFunder('{{ fp.id }}')"  class="btn btn-sm btn-danger"  id="reject-{{ fp.id }}">✗ Reject</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-success mb-4" style="margin-bottom:24px;">
+    ✅ <strong>No pending funder approvals.</strong> All registered funding organizations have been reviewed.
+  </div>
+  {% endif %}
+
+  <!-- ALL USERS -->
+  <div class="card mb-4" style="margin-bottom:24px;">
+    <div class="card-header">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:var(--primary-dark);">👥 All Users</h3>
+        <span class="badge badge-primary">{{ all_users | length }}</span>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+      <table class="table">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
+        <tbody>
+          {% for u in all_users %}
+          <tr>
+            <td style="font-weight:700;">{{ u.name or '—' }}</td>
+            <td>{{ u.email }}</td>
+            <td>
+              {% if u.user_type == 'family' %}<span class="badge badge-primary">👨‍👩‍👧 Family</span>
+              {% elif u.user_type == 'hospital' %}<span class="badge badge-info">🏥 Hospital</span>
+              {% elif u.user_type == 'funder' %}<span class="badge badge-success">💼 Funder</span>
+              {% elif u.user_type == 'admin' %}<span class="badge badge-danger">⚙️ Admin</span>
+              {% else %}<span class="badge badge-accent">{{ u.user_type }}</span>{% endif %}
+            </td>
+            <td style="font-size:0.82rem;color:var(--text-muted);">{{ u.created_at.strftime('%d %b %Y') if u.created_at else '' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ALL CASES -->
+  <div class="card mb-4" style="margin-bottom:24px;">
+    <div class="card-header">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:var(--primary-dark);">📋 All Cases</h3>
+        <span class="badge badge-primary">{{ all_cases | length }}</span>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+      {% if all_cases %}
+      <table class="table">
+        <thead><tr><th>Patient</th><th>Condition</th><th>Hospital</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for case in all_cases %}
+          <tr id="adminrow-{{ case.id }}">
+            <td style="font-weight:700;">{{ case.patient_name }}</td>
+            <td><span class="badge badge-accent">{{ case.illness_type }}</span></td>
+            <td style="font-size:0.85rem;">{{ case.hospital_name }}</td>
+            <td style="font-weight:700;">₹{{ "{:,}".format(case.estimated_cost) }}</td>
+            <td>
+              {% if case.status == 'submitted' %}<span class="badge badge-warning">⏳ Submitted</span>
+              {% elif case.status == 'verified' %}<span class="badge badge-info">🔍 Verified</span>
+              {% elif case.status == 'funded' %}<span class="badge badge-success">💰 Funded</span>
+              {% elif case.status == 'rejected' %}<span class="badge badge-danger">❌ Rejected</span>
+              {% else %}<span class="badge badge-primary">{{ case.status | title }}</span>{% endif %}
+            </td>
+            <td style="font-size:0.82rem;color:var(--text-muted);">{{ case.created_at.strftime('%d %b %Y') if case.created_at else '' }}</td>
+            <td>
+              <div class="d-flex gap-1">
+                <select onchange="adminChangeStatus('{{ case.id }}', this.value)" class="form-control" style="padding:4px 8px;font-size:0.8rem;width:auto;">
+                  <option value="">Change status</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="verified">Verified</option>
+                  <option value="partially_funded">Partially Funded</option>
+                  <option value="fully_funded">Fully Funded</option>
+                  <option value="closed">Closed</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <button onclick="adminDeleteCase('{{ case.id }}')" class="btn btn-sm btn-danger">🗑</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state" style="padding:30px;"><p>No cases yet.</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ALL APPLICATIONS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="d-flex align-center justify-between">
+        <h3 style="font-weight:800;color:var(--primary-dark);">📨 All Applications</h3>
+        <span class="badge badge-primary">{{ all_apps | length }}</span>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+      {% if all_apps %}
+      <table class="table">
+        <thead><tr><th>App ID</th><th>Case ID</th><th>Organisation</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for app in all_apps %}
+          <tr>
+            <td style="font-size:0.82rem;font-family:monospace;">{{ app.id }}</td>
+            <td style="font-size:0.82rem;font-family:monospace;">{{ app.case_id }}</td>
+            <td>{{ app.org_name or app.org_id }}</td>
+            <td>
+              {% if app.status == 'submitted' %}<span class="badge badge-warning">⏳ Pending</span>
+              {% elif app.status == 'approved' %}<span class="badge badge-success">✅ Approved</span>
+              {% elif app.status == 'rejected' %}<span class="badge badge-danger">❌ Rejected</span>{% endif %}
+            </td>
+            <td style="font-size:0.82rem;color:var(--text-muted);">{{ app.created_at.strftime('%d %b %Y') if app.created_at else '' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state" style="padding:30px;"><p>No applications yet.</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function adminChangeStatus(caseId, status) {
+  if (!status) return;
+  const res  = await fetch('/admin/change-status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ case_id: caseId, status })
+  });
+  const data = await res.json();
+  if (data.success) showToast(`Case status updated to ${status}`, 'success');
+  else showToast('Update failed.', 'error');
+}
+
+async function adminDeleteCase(caseId) {
+  if (!confirm('Delete this case and all its applications? This cannot be undone.')) return;
+  const res  = await fetch(`/admin/delete-case/${caseId}`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    showToast('Case deleted.', 'success');
+    const row = document.getElementById(`adminrow-${caseId}`);
+    if(row) row.remove();
+  }
+}
+
+async function approveFunder(profileId) {
+  if (!confirm('Approve this funding organization? They will be able to allocate funds to cases.')) return;
+  const btn = document.getElementById(`approve-${profileId}`);
+  btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+  try {
+    const res  = await fetch(`/admin/approve-funder/${profileId}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Funder approved! ✅', 'success');
+      const row = document.getElementById(`funderrow-${profileId}`);
+      if (row) { row.style.background = '#f0fdf4'; row.style.opacity = '0.6'; btn.innerHTML = '✅ Approved'; }
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast(data.message || 'Failed.', 'error');
+      btn.disabled = false; btn.innerHTML = '✓ Approve';
+    }
+  } catch(e) { showToast('An error occurred.', 'error'); btn.disabled = false; btn.innerHTML = '✓ Approve'; }
+}
+
+async function rejectFunder(profileId) {
+  if (!confirm('Reject this funding organization? Their profile will be deleted.')) return;
+  const btn = document.getElementById(`reject-${profileId}`);
+  btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+  try {
+    const res  = await fetch(`/admin/reject-funder/${profileId}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Funder rejected.', 'error');
+      const row = document.getElementById(`funderrow-${profileId}`);
+      if (row) row.remove();
+    } else {
+      showToast(data.message || 'Failed.', 'error');
+      btn.disabled = false; btn.innerHTML = '✗ Reject';
+    }
+  } catch(e) { showToast('An error occurred.', 'error'); btn.disabled = false; btn.innerHTML = '✗ Reject'; }
+}
+</script>
+{% endblock %}
